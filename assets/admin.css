@@ -288,6 +288,9 @@ code {
 .za-table td a { color: var(--za-text); font-weight: 500; }
 .za-table td a:hover { color: var(--za-accent); }
 .za-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 数字列收缩到内容宽度，把空间让给「页面 / 名称」那种长文本列；
+   左侧留 32px 内边距，否则相邻两列的数字和表头会贴在一起 */
+.za-table th.num, .za-table td.num { width: 1%; padding-left: 32px; }
 .za-table td code { background: transparent; padding: 0; color: var(--za-muted); }
 .za-table .za-btn { margin-left: 8px; }
 
