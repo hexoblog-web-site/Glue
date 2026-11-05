@@ -1,9 +1,13 @@
 /*!
- * zan.js 2.0.5 - Sugar-Box：点赞 + 网站统计（内置样式版）
+ * zan.js 2.0.6 - Sugar-Box：点赞 + 网站统计（内置样式版）
  * 接入：<script src="https://你的域名/api/js/zan.js" data-server="https://你的域名" defer></script>
  * 点赞：<div data-zan data-zan-scope="content"></div>（内容页专用；列表页请勿加 scope）
  * 阅读：<span data-zan-view></span>（显示这一页的浏览次数）
  *        <span data-zan-view data-zan-scope="site"></span>（显示全站累计）
+ *
+ * 2.0.6
+ *   - 上报完浏览后广播 zan:pageview 事件（带写入后的 pv / uv 与路径），
+ *     让页面自带的阅读数能取到「含本次」的准数，不必刷新才 +1
  *
  * 2.0.5
  *   - 点赞响应被浏览器拦下时（跨域白名单没配对），用只读接口复核数字，
@@ -25,7 +29,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.0.5';
+  var VERSION = '2.0.6';
 
   var script = document.currentScript || (function () {
     var all = document.querySelectorAll('script[src*="zan.js"]');
@@ -423,6 +427,19 @@
       if (d.data.site && typeof d.data.site.views === 'number') {
         paintViews(siteEls, d.data.site.views);
       }
+      /* 主题/插件自带的阅读数跑在本脚本之前（本脚本 defer），
+         它读到的是「写入之前」的旧值。这里把写入之后的准数广播出去，
+         让它覆盖，省得用户刷新一次才看到 +1。 */
+      try {
+        window.dispatchEvent(new CustomEvent('zan:pageview', {
+          detail: {
+            path: url.split('?')[0],
+            views: d.data.views,
+            pageviews: d.data.pageviews,
+            visitors: d.data.visitors
+          }
+        }));
+      } catch (e) {}
     }).catch(function () {});
   }
 

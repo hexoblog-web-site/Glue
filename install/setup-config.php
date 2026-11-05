@@ -123,7 +123,7 @@ switch ($step) {
             'site_id'         => bin2hex(random_bytes(8)),
             'site_name'       => '',
             'view_on'         => true,
-            'view_mode'       => 'uv',
+            'view_mode'       => 'pv',
             'salt_rotation'   => 'month',
             /* 新装没有旧阅读表，不需要迁移 */
             'stats_migrated'  => '1',

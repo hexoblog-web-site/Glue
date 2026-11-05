@@ -92,10 +92,12 @@ if ($notice) {
 
         <label for="view_mode">界面显示哪个数</label>
         <select id="view_mode" name="view_mode">
-            <option value="uv" <?php echo zan_view_mode() === 'uv' ? 'selected' : ''; ?>>访客数（同一人多天只算一次）</option>
-            <option value="pv" <?php echo zan_view_mode() === 'pv' ? 'selected' : ''; ?>>浏览次数（每打开一次算一次）</option>
+            <option value="pv" <?php echo zan_view_mode() === 'pv' ? 'selected' : ''; ?>>浏览次数（每打开一次 +1）</option>
+            <option value="uv" <?php echo zan_view_mode() === 'uv' ? 'selected' : ''; ?>>访客数（同一访客一个周期只算一次）</option>
         </select>
-        <p class="za-desc">两个数都在记，这里只决定 <code>data-zan-view</code> 显示哪个。后台统计页两个都列。</p>
+        <p class="za-desc">两个数都在记，这里只决定页面上的数字用哪个，后台统计页两个都列。
+            选「访客数」时，同一个人反复打开同一篇文章，页面上的数字<b>不会变</b>——这是去重，不是没记上；
+            想要「每打开一次就 +1」，选「浏览次数」。</p>
 
         <label for="salt_rotation">访客去重周期</label>
         <select id="salt_rotation" name="salt_rotation">

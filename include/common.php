@@ -626,7 +626,7 @@ function zan_stats_record(PDO $pdo, $path, $title, $query, $referrer, $hostname,
 /** uv = 界面显示访客数；pv = 界面显示浏览次数 */
 function zan_view_mode()
 {
-    $m = strtolower((string) zan_cfg('view_mode', 'uv'));
+    $m = strtolower((string) zan_cfg('view_mode', 'pv'));
     return $m === 'pv' ? 'pv' : 'uv';
 }
 
