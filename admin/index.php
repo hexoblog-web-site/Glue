@@ -44,17 +44,12 @@ foreach ($series as $d => $row) {
 $peak = max(1, max($days), max($vdays));
 
 /* 两个子查询各自计数，避免 JOIN 多张表时相互放大 */
-$viewCol = zan_stats_ready()
-    ? '(SELECT COUNT(*) FROM ' . zan_table('event') . ' v WHERE v.`url_path` = p.`page_key` AND v.`event_type` = 1)'
-    : '0';
-$uvCol = zan_stats_ready()
-    ? '(SELECT COUNT(DISTINCT v.`session_id`) FROM ' . zan_table('event') . ' v WHERE v.`url_path` = p.`page_key` AND v.`event_type` = 1)'
-    : '0';
-$top = $pdo->query('SELECT p.`page_key`, p.`title`,'
-    . ' (SELECT COUNT(*) FROM ' . zan_table('log') . ' l WHERE l.`page_key` = p.`page_key`) AS likes,'
-    . ' ' . $viewCol . ' AS views,'
-    . ' ' . $uvCol . ' AS visitors,'
-    . ' (SELECT MAX(l.`created_at`) FROM ' . zan_table('log') . ' l WHERE l.`page_key` = p.`page_key`) AS last_at'
+$rank = zan_page_rank_cols('p');
+$top  = $pdo->query('SELECT p.`page_key`, p.`title`,'
+    . ' ' . $rank['likes'] . ' AS likes,'
+    . ' ' . $rank['views'] . ' AS views,'
+    . ' ' . $rank['visitors'] . ' AS visitors,'
+    . ' ' . $rank['last_at'] . ' AS last_at'
     . ' FROM ' . zan_table('page') . ' p'
     . ' ORDER BY views DESC, likes DESC, p.`updated_at` DESC LIMIT 10')->fetchAll();
 

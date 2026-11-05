@@ -18,6 +18,12 @@ if (!defined('ZAN_APP')) {
     exit('Forbidden');
 }
 
+/* 一次更新最多写多少字节（解压后）。程序本体只有几百 KB，
+ * 48MB 足够覆盖未来扩容，又能挡住「几千个小文件把磁盘写满」。 */
+if (!defined('ZAN_UPD_MAX_BYTES')) {
+    define('ZAN_UPD_MAX_BYTES', 48 * 1024 * 1024);
+}
+
 /* 解压依赖自带的 ZIP 读取器。放在这里 require，任何人引入更新器都不会缺类
    （以前靠 update.php / cron.php 各自引入，换入口就报 Zan_Zip_Reader not found）。 */
 require_once __DIR__ . '/zipreader.php';
@@ -150,14 +156,13 @@ function zan_upd_interval()
     return max(1, min(168, (int) zan_cfg('update_interval', '6'))) * 3600;
 }
 
-/** 自动检查是否到点（只读本地状态，不联网） */
+/** 自动检查是否到点（只读本地状态，不联网）
+ *
+ * 具体判断在 common.php 的 zan_update_auto_due()：后台每页的页脚也要问一次，
+ * 那份实现不能依赖本文件（否则每个后台页面都得加载 1200 行更新器）。 */
 function zan_upd_auto_due()
 {
-    if (!zan_upd_auto_check()) {
-        return false;
-    }
-    $s = zan_upd_state_read();
-    return empty($s['checked_at']) || (time() - (int) $s['checked_at']) >= zan_upd_interval();
+    return zan_update_auto_due();
 }
 
 /** 下次自动检查的时间戳；从没查过或已关闭返回 0 */
@@ -565,10 +570,13 @@ function zan_upd_has_new($state)
     return false;
 }
 
-/** 后台菜单红点用：只读本地状态，不联网 */
+/** 后台菜单红点用：只读本地状态，不联网。
+ *
+ * 判断口径与 common.php 的 zan_update_hint() 完全一致 —— 侧栏红点和更新页横幅
+ * 必须来自同一个结论，否则会出现「侧栏有红点、进去说已是最新」。 */
 function zan_upd_available_cached()
 {
-    return zan_upd_has_new(zan_upd_state_read());
+    return zan_update_hint() !== '';
 }
 
 /**
@@ -709,7 +717,9 @@ function zan_upd_restore($dir, &$err)
     $err  = '';
     $root = realpath(zan_upd_backup_root());
     $real = realpath((string) $dir);
-    if ($root === false || $real === false || strpos($real, $root) !== 0 || !is_dir($real)) {
+    /* 前缀比对要带上分隔符：/backup/update 不能把 /backup/update-old 放进来 */
+    if ($root === false || $real === false || !is_dir($real)
+        || strpos($real . DIRECTORY_SEPARATOR, rtrim($root, '/\\') . DIRECTORY_SEPARATOR) !== 0) {
         $err = '备份目录不合法';
         return false;
     }
@@ -929,6 +939,20 @@ function zan_upd_close_dirs($saved)
  * 下载与安装
  * ------------------------------------------------------------------------- */
 
+/** 清掉 data/tmp 里超过一天的残留包（上次超时被杀会留下） */
+function zan_upd_prune_tmp($dir)
+{
+    foreach ((array) @scandir($dir) as $n) {
+        if ($n === '.' || $n === '..') {
+            continue;
+        }
+        $p = $dir . '/' . $n;
+        if (is_file($p) && (time() - (int) @filemtime($p)) > 86400) {
+            @unlink($p);
+        }
+    }
+}
+
 /** 按 commit 下载源码包 */
 function zan_upd_download($sha, &$err)
 {
@@ -944,6 +968,7 @@ function zan_upd_download($sha, &$err)
         $err = '创建临时目录失败';
         return false;
     }
+    zan_upd_prune_tmp($dir);
     $zip = $dir . '/update-' . substr($sha, 0, 12) . '.zip';
     @unlink($zip);
 
@@ -1045,7 +1070,9 @@ function zan_upd_install_zip($zipPath, $info, &$err)
     }
 
     $written = 0;
+    $bytes   = 0;
     $failed  = array();
+    $done    = array();
 
     foreach ($entries as $name => $e) {
         if ($prefix !== '' && strpos($name, $prefix) !== 0) {
@@ -1060,10 +1087,17 @@ function zan_upd_install_zip($zipPath, $info, &$err)
             $failed[] = $rel . '（' . $zip->error() . '）';
             continue;
         }
+        /* 整包解压上限：单个文件有闸，整包也要有，避免几千个小文件把磁盘写满 */
+        $bytes += strlen($data);
+        if ($bytes > ZAN_UPD_MAX_BYTES) {
+            $failed[] = '解压后超过 ' . zan_upd_bytes(ZAN_UPD_MAX_BYTES) . '，已停止';
+            break;
+        }
         if (!zan_upd_write_file($rel, $data, $werr)) {
             $failed[] = $rel . '（' . $werr . '）';
         } else {
             $written++;
+            $done[] = $rel;
         }
     }
 
@@ -1081,12 +1115,18 @@ function zan_upd_install_zip($zipPath, $info, &$err)
         return false;
     }
 
+    /* 新版删掉的文件，旧站上还留着 —— 这些残留会出现在目录里，甚至被直接访问。
+     * 只删「上次更新写过、这次包里没有」的文件，绝不动 config.php / data/ / install/。 */
+    $state      = zan_upd_state_read();
+    $prevFiles  = isset($state['applied_files']) && is_array($state['applied_files']) ? $state['applied_files'] : array();
+    $removed    = zan_upd_prune_removed($prevFiles, $done, $perms);
+
     zan_upd_close_dirs($perms);
     zan_upd_prune_backups(3);
 
-    $state = zan_upd_state_read();
     $state['applied_sha']     = (string) $info['sha'];
     $state['applied_version'] = $remoteVer;
+    $state['applied_files']   = $done;
     $state['last_update_at']  = time();
     $state['last_backup']     = $backup;
     $history = isset($state['history']) && is_array($state['history']) ? $state['history'] : array();
@@ -1099,7 +1139,65 @@ function zan_upd_install_zip($zipPath, $info, &$err)
     $state['history'] = array_slice($history, 0, 10);
     zan_upd_state_write($state);
 
-    return array('version' => $remoteVer, 'files' => $written, 'backup' => $backup);
+    return array('version' => $remoteVer, 'files' => $written, 'backup' => $backup, 'removed' => $removed);
+}
+
+/**
+ * 删掉「上次安装写过、这次包里没有」的文件
+ *
+ * @param array $previous 上次的文件清单（state.applied_files）
+ * @param array $current  这次写过的文件
+ * @param array $perms    zan_upd_open_dirs() 的返回值，用于补写权限
+ * @return int 删掉的数量
+ */
+function zan_upd_prune_removed($previous, $current, $perms = array())
+{
+    if (!$previous) {
+        return 0;
+    }
+    $keep = array_flip((array) $current);
+    $gone = 0;
+    $dirs = array();
+
+    foreach ($previous as $rel) {
+        $rel = str_replace('\\', '/', (string) $rel);
+        if (isset($keep[$rel]) || !zan_upd_path_allowed($rel)) {
+            continue;
+        }
+        $path = ZAN_ROOT . $rel;
+        if (!is_file($path)) {
+            continue;
+        }
+        /* 目录不可写时临时提权，和安装时同一套办法 */
+        $dir = dirname($path);
+        if (!is_writable($dir)) {
+            if (!isset($perms[$dir])) {
+                $perms[$dir] = @fileperms($dir);
+            }
+            @chmod($dir, 0755);
+        }
+        if (@unlink($path)) {
+            $gone++;
+            $dirs[$dir] = true;
+        }
+    }
+
+    /* 顺手收掉变空的子目录（只收程序区里的，且不含顶层目录） */
+    $tops = array(ZAN_ROOT . 'api', ZAN_ROOT . 'admin', ZAN_ROOT . 'include', ZAN_ROOT . 'assets');
+    foreach (array_keys($dirs) as $dir) {
+        $dir = rtrim(str_replace('\\', '/', $dir), '/');
+        while ($dir !== '' && !in_array($dir, $tops, true) && strpos($dir, rtrim(ZAN_ROOT, '/\\') . '/') === 0) {
+            $items = @scandir($dir);
+            if (!is_array($items) || count($items) > 2) {
+                break;
+            }
+            if (!@rmdir($dir)) {
+                break;
+            }
+            $dir = rtrim(dirname($dir), '/');
+        }
+    }
+    return $gone;
 }
 
 /**
@@ -1151,8 +1249,10 @@ function zan_upd_apply_locked(&$err)
     $err = '';
     @set_time_limit(180);
 
-    $info = zan_upd_remote_info($err);
+    /* 三步各自的错误分开报：站长看到「下载失败」和「安装失败」能做的事完全不同 */
+    $info = zan_upd_remote_info($e1);
     if ($info === false) {
+        $err = '读取远端版本失败：' . $e1;
         return false;
     }
     if ($info['version'] !== '' && version_compare($info['version'], ZAN_VERSION, '<')) {
@@ -1160,15 +1260,17 @@ function zan_upd_apply_locked(&$err)
         return false;
     }
 
-    $zip = zan_upd_download($info['sha'], $err);
+    $zip = zan_upd_download($info['sha'], $e2);
     if ($zip === false) {
+        $err = '下载源码包失败：' . $e2;
         return false;
     }
 
-    $r = zan_upd_install_zip($zip, $info, $err);
+    $r = zan_upd_install_zip($zip, $info, $e3);
     @unlink($zip);
 
     if ($r === false) {
+        $err = '安装失败：' . $e3;
         return false;
     }
     return $r;

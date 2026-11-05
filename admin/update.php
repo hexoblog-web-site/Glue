@@ -8,8 +8,7 @@
 define('ZAN_APP', true);
 require dirname(__DIR__) . '/include/common.php';
 require dirname(__DIR__) . '/include/mailer.php';
-require dirname(__DIR__) . '/include/zipreader.php';
-require dirname(__DIR__) . '/include/updater.php';
+require dirname(__DIR__) . '/include/updater.php';   /* 更新器自己会带上 zipreader */
 zan_require_admin();
 
 $notice = '';
@@ -170,7 +169,13 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         if ($r === false) {
             $notice = array('更新失败：' . $err, 'error');
         } else {
-            $notice = array('已更新到 ' . $r['version'] . '（覆盖 ' . (int) $r['files'] . ' 个文件）。刷新页面后生效。', 'ok');
+            /* 必须跳转：同一次请求里 ZAN_VERSION 还是旧常量，
+               直接渲染会出现「已更新到 2.0.3，当前版本 2.0.2」这种自相矛盾的页面。 */
+            header('Location: ' . zan_url('admin/update.php?done=apply'
+                . '&v=' . rawurlencode((string) $r['version'])
+                . '&n=' . (int) $r['files']
+                . '&r=' . (int) (isset($r['removed']) ? $r['removed'] : 0)));
+            exit;
         }
     } elseif ($do === 'skip') {
         $state = zan_upd_state_read();
@@ -195,7 +200,8 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         if ($hit === null) {
             $notice = array('备份不存在。', 'error');
         } elseif (zan_upd_rollback($hit['path'], $err)) {
-            $notice = array('已回滚到 ' . $name . ' 的版本。刷新页面后生效。', 'ok');
+            header('Location: ' . zan_url('admin/update.php?done=rollback&name=' . rawurlencode($name)));
+            exit;
         } else {
             $notice = array('回滚失败：' . $err, 'error');
         }
@@ -203,10 +209,21 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 }
 
 if (isset($_GET['done'])) {
-    if ($_GET['done'] === 'save') {
+    $done = (string) $_GET['done'];
+    if ($done === 'save') {
         $notice = array('更新设置已保存。', 'ok');
-    } elseif ($_GET['done'] === 'mail') {
+    } elseif ($done === 'mail') {
         $notice = array('发信设置已保存。', 'ok');
+    } elseif ($done === 'apply') {
+        $msg = '已更新到 ' . (isset($_GET['v']) ? (string) $_GET['v'] : ZAN_VERSION)
+             . '（覆盖 ' . (int) (isset($_GET['n']) ? $_GET['n'] : 0) . ' 个文件';
+        if (!empty($_GET['r'])) {
+            $msg .= '，清掉 ' . (int) $_GET['r'] . ' 个新版已删除的旧文件';
+        }
+        $notice = array($msg . '）。已备份到 data/backup/update/，出问题可以在下面回滚。', 'ok');
+    } elseif ($done === 'rollback') {
+        $notice = array('已回滚到 ' . (isset($_GET['name']) ? (string) $_GET['name'] : '')
+            . ' 的版本。数据库和 config.php 没有动。', 'ok');
     }
 }
 
@@ -258,7 +275,7 @@ if ($notice) {
         <form method="post" action="<?php echo zan_h(zan_url('admin/update.php')); ?>">
             <?php echo zan_csrf_field(); ?>
             <input type="hidden" name="action" value="check" />
-            <button class="za-btn" type="submit">立即检查</button>
+            <button class="za-btn is-primary" type="submit">立即检查</button>
         </form>
     </div>
 
@@ -307,7 +324,7 @@ if ($notice) {
         <form method="post" action="<?php echo zan_h(zan_url('admin/update.php')); ?>">
             <?php echo zan_csrf_field(); ?>
             <input type="hidden" name="action" value="apply" />
-            <button class="za-btn" type="submit">立即更新到 <?php echo $remoteVer !== '' ? zan_h($remoteVer) : '最新提交'; ?></button>
+            <button class="za-btn is-primary" type="submit">立即更新到 <?php echo $remoteVer !== '' ? zan_h($remoteVer) : '最新提交'; ?></button>
         </form>
         <form method="post" action="<?php echo zan_h(zan_url('admin/update.php')); ?>">
             <?php echo zan_csrf_field(); ?>
@@ -371,7 +388,7 @@ if ($notice) {
         <label class="za-check"><input type="checkbox" name="update_auto_check" value="1" <?php echo zan_upd_auto_check() ? 'checked' : ''; ?> /> 自动检查（打开后台时静默查一次，有新版本在菜单上标点）</label>
         <label class="za-check"><input type="checkbox" name="update_auto_apply" value="1" <?php echo zan_upd_auto_apply() ? 'checked' : ''; ?> /> 自动更新（发现就装，不再问；仓库只有你能推代码时才建议开）</label>
 
-        <p style="margin-top:16px"><button class="za-btn" type="submit">保存设置</button></p>
+        <p style="margin-top:16px"><button class="za-btn is-primary" type="submit">保存设置</button></p>
     </form>
 </div>
 
@@ -420,7 +437,7 @@ if ($notice) {
 
         <label class="za-check"><input type="checkbox" name="mail_verify" value="1" <?php echo $mailCfg['verify'] ? 'checked' : ''; ?> /> 校验证书（服务器证书过期或自签时才取消）</label>
 
-        <p style="margin-top:16px"><button class="za-btn" type="submit">保存发信设置</button></p>
+        <p style="margin-top:16px"><button class="za-btn is-primary" type="submit">保存发信设置</button></p>
     </form>
 
     <form method="post" action="<?php echo zan_h(zan_url('admin/update.php')); ?>" style="margin-top:10px">

@@ -1,0 +1,42 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  php-syntax:
+    name: PHP 语法检查
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 程序声明支持 7.4 起；只测最低与最高，中间大版本语法上没有额外差异
+        php: ['7.4', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: php -l 全量检查
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            out=$(php -l "$f" 2>&1) || { echo "$out"; fail=1; }
+          done < <(git ls-files '*.php')
+          exit $fail
+
+  js-syntax:
+    name: JS 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: node --check
+        run: |
+          for f in $(git ls-files '*.js'); do node --check "$f"; done

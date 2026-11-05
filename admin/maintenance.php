@@ -1,6 +1,6 @@
 <?php
 /**
- * 数据维护：备份下载、上传恢复、清空数据。
+ * 数据备份：备份下载、上传恢复、清空数据。
  */
 define('ZAN_APP', true);
 require dirname(__DIR__) . '/include/common.php';
@@ -14,16 +14,16 @@ $statsReady = zan_stats_ready();
 $notice = '';
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = isset($_POST['action']) ? (string) $_POST['action'] : '';
+    $action = zan_post_str('action');
 
-    /* 备份：直接下载，不在服务器留副本 */
-    if ($action === 'backup') {
+    /* 所有动作（包括「下载备份」）都先验 CSRF：
+       下载会把全部访客记录打到浏览器，不能靠一个跨站表单就能触发。 */
+    if (!zan_csrf_ok(zan_post_str('nonce'))) {
+        $notice = array('页面已过期，请刷新后重试。', 'error');
+    } elseif ($action === 'backup') {
+        /* 备份：直接下载，不在服务器留副本 */
         zan_bk_send($pdo);
         exit;
-    }
-
-    if (!zan_csrf_ok(isset($_POST['nonce']) ? $_POST['nonce'] : '')) {
-        $notice = array('页面已过期，请刷新后重试。', 'error');
     } elseif ($action === 'repair') {
         /* 全部是 CREATE TABLE IF NOT EXISTS，已有表不动，只补缺的 */
         try {
@@ -127,7 +127,7 @@ $up2    = zan_ini_bytes(ini_get('post_max_size'));
 $limit  = min($up1 ?: ZAN_BK_MAX, $up2 ?: ZAN_BK_MAX, ZAN_BK_MAX);
 $limitH = $limit >= 1048576 ? round($limit / 1048576, 1) . ' MB' : round($limit / 1024) . ' KB';
 
-zan_admin_header('数据维护', 'maintenance.php');
+zan_admin_header('数据备份', 'maintenance.php');
 if ($notice) {
     zan_notice($notice[0], $notice[1]);
 }
@@ -147,7 +147,7 @@ if ($notice) {
     <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
         <?php echo zan_csrf_field(); ?>
         <input type="hidden" name="action" value="repair" />
-        <button type="submit" class="za-btn">补建表结构</button>
+        <button type="submit" class="za-btn is-primary">补建表结构</button>
     </form>
 </div>
 <?php elseif ($legacy > 0 && $events === 0) : ?>
@@ -157,7 +157,7 @@ if ($notice) {
     <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
         <?php echo zan_csrf_field(); ?>
         <input type="hidden" name="action" value="migrate" />
-        <button type="submit" class="za-btn">导入旧记录</button>
+        <button type="submit" class="za-btn is-primary">导入旧记录</button>
     </form>
 </div>
 <?php endif; ?>
@@ -168,7 +168,7 @@ if ($notice) {
     <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
         <?php echo zan_csrf_field(); ?>
         <input type="hidden" name="action" value="backup" />
-        <button type="submit" class="za-btn">下载备份</button>
+        <button type="submit" class="za-btn is-primary">下载备份</button>
     </form>
 </div>
 

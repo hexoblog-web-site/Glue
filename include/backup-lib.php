@@ -94,8 +94,20 @@ function zan_bk_decode($raw)
     if (!isset($data['format']) || $data['format'] !== ZAN_BK_FORMAT) {
         throw new RuntimeException('这不是本程序的备份文件。');
     }
-    if (!isset($data['tables']['page']) || !isset($data['tables']['log'])) {
+    if (!isset($data['tables']) || !is_array($data['tables'])) {
         throw new RuntimeException('备份内容不完整。');
+    }
+    /* 逐项确认是数组：只判断 isset 的话，tables.page 是个字符串也能过，
+       后面 foreach 会先报一堆 warning 再往库里写脏数据 */
+    foreach (array('page', 'log') as $need) {
+        if (!isset($data['tables'][$need]) || !is_array($data['tables'][$need])) {
+            throw new RuntimeException('备份内容不完整（缺少 ' . $need . ' 表）。');
+        }
+    }
+    foreach (array('session', 'event', 'view') as $opt) {
+        if (isset($data['tables'][$opt]) && !is_array($data['tables'][$opt])) {
+            throw new RuntimeException('备份里的 ' . $opt . ' 表格式不对。');
+        }
     }
     return $data;
 }
@@ -158,6 +170,9 @@ function zan_bk_apply(PDO $pdo, array $data, $mode)
         $now      = date('Y-m-d H:i:s');
 
         foreach ($data['tables']['page'] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
             if (empty($row['page_key'])) {
                 continue;
             }
@@ -170,6 +185,9 @@ function zan_bk_apply(PDO $pdo, array $data, $mode)
         }
 
         foreach ($data['tables']['log'] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
             if (empty($row['page_key']) || empty($row['visitor_hash'])) {
                 continue;
             }
@@ -192,7 +210,7 @@ function zan_bk_apply(PDO $pdo, array $data, $mode)
                     . ' `country`, `region`, `city`, `distinct_id`, `created_at`)'
                     . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
                 foreach ($data['tables']['session'] as $row) {
-                    if (empty($row['session_id'])) {
+                    if (!is_array($row) || empty($row['session_id'])) {
                         continue;
                     }
                     $insS->execute(array(
@@ -220,7 +238,7 @@ function zan_bk_apply(PDO $pdo, array $data, $mode)
                     . ' `event_type`, `event_name`, `created_at`)'
                     . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
                 foreach ($data['tables']['event'] as $row) {
-                    if (empty($row['session_id']) || empty($row['url_path'])) {
+                    if (!is_array($row) || empty($row['session_id']) || empty($row['url_path'])) {
                         continue;
                     }
                     $created = isset($row['created_at']) ? (string) $row['created_at'] : $now;
@@ -253,7 +271,7 @@ function zan_bk_apply(PDO $pdo, array $data, $mode)
                     . ' (`event_id`, `website_id`, `session_id`, `visit_id`, `url_path`, `page_title`, `event_type`, `created_at`)'
                     . ' VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
                 foreach ($data['tables']['view'] as $row) {
-                    if (empty($row['page_key']) || empty($row['visitor_hash'])) {
+                    if (!is_array($row) || empty($row['page_key']) || empty($row['visitor_hash'])) {
                         continue;
                     }
                     $created = isset($row['created_at']) ? (string) $row['created_at'] : $now;

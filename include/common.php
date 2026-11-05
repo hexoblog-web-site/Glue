@@ -58,15 +58,25 @@ function zan_config_save(array $changes)
         $cfg[$k] = $v;
     }
     $body = "<?php\n/**\n * Sugar-Box 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($cfg, true) . ";\n";
-    $ok = @file_put_contents(zan_config_file(), $body, LOCK_EX) !== false;
-    if ($ok) {
-        @chmod(zan_config_file(), 0644);
-        /* opcache 会把 config.php 里的数组编译进缓存，不失效的话下一个请求还读旧值 */
-        if (function_exists('opcache_invalidate')) {
-            @opcache_invalidate(zan_config_file(), true);
-        }
+
+    /* 先写临时文件再 rename：这个文件一坏，整站 500。
+       直接覆盖写的时候哪怕断电一次，config.php 就只剩半截 PHP。 */
+    $file = zan_config_file();
+    $tmp  = $file . '.tmp';
+    if (@file_put_contents($tmp, $body, LOCK_EX) === false) {
+        return false;
     }
-    return $ok;
+    @chmod($tmp, 0644);
+    if (!@rename($tmp, $file)) {
+        @unlink($tmp);
+        return false;
+    }
+    @chmod($file, 0644);
+    /* opcache 会把 config.php 里的数组编译进缓存，不失效的话下一个请求还读旧值 */
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate($file, true);
+    }
+    return true;
 }
 
 /* ---------------------------------------------------------------------------
@@ -201,8 +211,9 @@ function zan_norm_key($raw)
  */
 function zan_content_guard($key)
 {
-    $path  = zan_norm_key(isset($_POST['path']) ? $_POST['path'] : '');
-    $scope = isset($_POST['scope']) ? (string) $_POST['scope'] : '';
+    /* 参数可能是数组（?path[]=x）：PHP 会把数组转成 "Array"，直接 trim 还会在 8.x 抛 TypeError */
+    $path  = zan_norm_key(zan_post_str('path'));
+    $scope = zan_post_str('scope');
 
     if ($path === '' || $path === '/') {
         zan_json(403, '只能在内容页点赞');
@@ -828,6 +839,37 @@ function zan_has_view_table(PDO $pdo)
     return $schema['legacy'];
 }
 
+/**
+ * 页面排行用的四个列表达式：浏览 / 访客 / 赞 / 最近一次点赞
+ *
+ * admin/index.php 和 admin/list.php 都要这份排行，SQL 各写一遍迟早跑偏。
+ * 一律用子查询而不是 JOIN：log 与 event 都是一对多，JOIN 到一起会互相放大计数。
+ *
+ * @return array<string,string> 可直接拼进 SELECT 的表达式
+ */
+function zan_page_rank_cols($alias = 'p')
+{
+    $alias = preg_replace('/[^a-z]/i', '', (string) $alias);
+    if ($alias === '') {
+        $alias = 'p';
+    }
+    $a     = $alias . '.';
+    $event = zan_table('event');
+    $log   = zan_table('log');
+    $ready = zan_stats_ready();
+
+    return array(
+        'views'    => $ready
+            ? '(SELECT COUNT(*) FROM ' . $event . ' v WHERE v.`url_path` = ' . $a . '`page_key` AND v.`event_type` = 1)'
+            : '0',
+        'visitors' => $ready
+            ? '(SELECT COUNT(DISTINCT v.`session_id`) FROM ' . $event . ' v WHERE v.`url_path` = ' . $a . '`page_key` AND v.`event_type` = 1)'
+            : '0',
+        'likes'    => '(SELECT COUNT(*) FROM ' . $log . ' l WHERE l.`page_key` = ' . $a . '`page_key`)',
+        'last_at'  => '(SELECT MAX(l.`created_at`) FROM ' . $log . ' l WHERE l.`page_key` = ' . $a . '`page_key`)',
+    );
+}
+
 /* ---------------------------------------------------------------------------
  * 接口输出
  * ------------------------------------------------------------------------- */
@@ -956,6 +998,96 @@ function zan_csrf_rotate()
 }
 
 /* ---------------------------------------------------------------------------
+ * 登录节流
+ *
+ * 只把失败次数记在 session 里是没用的：攻击者每次丢掉 Cookie 就从 0 开始，
+ * 8 次限制形同虚设。这里按 IP 再记一份，落在 data/login-throttle.json。
+ * 文件不可写时静默降级（退回 session 计数），不让登录功能因为磁盘权限挂掉。
+ * ------------------------------------------------------------------------- */
+
+function zan_login_throttle_file()
+{
+    return rtrim(ZAN_ROOT, '/\\') . '/data/login-throttle.json';
+}
+
+function zan_login_throttle_read()
+{
+    $f = zan_login_throttle_file();
+    if (!is_file($f)) {
+        return array();
+    }
+    $j = json_decode((string) @file_get_contents($f), true);
+    return is_array($j) ? $j : array();
+}
+
+function zan_login_throttle_write(array $all)
+{
+    $f = zan_login_throttle_file();
+    if (!is_dir(dirname($f))) {
+        return false;
+    }
+    $tmp = $f . '.tmp';
+    if (@file_put_contents($tmp, json_encode($all, JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        return false;
+    }
+    @chmod($tmp, 0644);
+    if (!@rename($tmp, $f)) {
+        @unlink($tmp);
+        return false;
+    }
+    return true;
+}
+
+/** 还要等多少秒才能再试；0 表示没锁 */
+function zan_login_throttle_left()
+{
+    $all = zan_login_throttle_read();
+    $ip  = zan_client_ip();
+    if (empty($all[$ip]) || !is_array($all[$ip])) {
+        return 0;
+    }
+    $count = isset($all[$ip]['n']) ? (int) $all[$ip]['n'] : 0;
+    $last  = isset($all[$ip]['t']) ? (int) $all[$ip]['t'] : 0;
+    if ($count < ZAN_LOGIN_MAX_TRY) {
+        return 0;
+    }
+    $left = ZAN_LOGIN_WINDOW - (time() - $last);
+    return $left > 0 ? $left : 0;
+}
+
+function zan_login_throttle_hit()
+{
+    $ip  = zan_client_ip();
+    $now = time();
+    $all = zan_login_throttle_read();
+
+    /* 顺手清掉一天前的记录，文件不会越滚越大 */
+    foreach ($all as $k => $v) {
+        if (!is_array($v) || ($now - (int) (isset($v['t']) ? $v['t'] : 0)) > 86400) {
+            unset($all[$k]);
+        }
+    }
+
+    $n = isset($all[$ip]['n']) ? (int) $all[$ip]['n'] : 0;
+    $t = isset($all[$ip]['t']) ? (int) $all[$ip]['t'] : 0;
+    if ($now - $t > ZAN_LOGIN_WINDOW) {
+        $n = 0;   // 窗口过了，重新计数
+    }
+    $all[$ip] = array('n' => $n + 1, 't' => $now);
+    zan_login_throttle_write($all);
+}
+
+function zan_login_throttle_clear()
+{
+    $ip  = zan_client_ip();
+    $all = zan_login_throttle_read();
+    if (isset($all[$ip])) {
+        unset($all[$ip]);
+        zan_login_throttle_write($all);
+    }
+}
+
+/* ---------------------------------------------------------------------------
  * 后台页面框架
  * ------------------------------------------------------------------------- */
 
@@ -1016,34 +1148,42 @@ function zan_update_auto_due()
 function zan_admin_header($title, $active)
 {
     /* 侧栏菜单：文件名 => array(名称, 一句话说明, 内联图标)
-     * 图标统一 24 视图框、线性描边，尺寸与颜色交给 CSS（.za-nav svg）。
-     * 顺序即侧栏顺序：天天看的在上，配置类沉到底部。 */
+     * 图标统一 24 视图框、线性描边，尺寸与颜色交给 CSS（.za-nav svg）。 */
     $items = array(
         'index.php'       => array(
             '仪表盘', '今天的点赞与浏览',
             '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
         ),
-        'stats.php'       => array(
-            '网站统计', '访问趋势、来源与访客',
-            '<path d="M4.5 19.5V12M9.8 19.5V6M15.1 19.5v-5M20.4 19.5V9"/><path d="M3 19.5h18"/>',
-        ),
         'list.php'        => array(
             '点赞统计', '每篇文章收到多少赞',
             '<path d="M12 20.2S4.6 15.7 4.6 10.6A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7.4 2.6c0 5.1-7.4 9.6-7.4 9.6z"/>',
         ),
-        'maintenance.php' => array(
-            '数据维护', '备份、恢复与清理',
-            '<ellipse cx="12" cy="6.2" rx="7.4" ry="2.9"/><path d="M4.6 6.2v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9V6.2"/><path d="M4.6 11.8v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9v-5.6"/>',
+        'stats.php'       => array(
+            '网站统计', '访问趋势、来源与访客',
+            '<path d="M4.5 19.5V12M9.8 19.5V6M15.1 19.5v-5M20.4 19.5V9"/><path d="M3 19.5h18"/>',
         ),
-        'update.php'      => array(
-            '系统更新', '从 GitHub 装新版本',
-            '<path d="M7.3 17.5a4 4 0 0 1-.4-7.98 5.5 5.5 0 0 1 10.66-.7A3.7 3.7 0 0 1 17.8 17.5"/><path d="M12 11.2v6.2"/><path d="M9.7 15 12 17.3 14.3 15"/>',
+        'maintenance.php' => array(
+            '数据备份', '备份、恢复与清理',
+            '<ellipse cx="12" cy="6.2" rx="7.4" ry="2.9"/><path d="M4.6 6.2v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9V6.2"/><path d="M4.6 11.8v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9v-5.6"/>',
         ),
         'settings.php'    => array(
             '系统设置', '站点信息、统计口径与访问控制',
             '<path d="M4 7.5h7M15.5 7.5h4.5M4 16.5h4M12.5 16.5h7.5"/><circle cx="13" cy="7.5" r="2.2"/><circle cx="10" cy="16.5" r="2.2"/>',
         ),
+        'update.php'      => array(
+            '系统更新', '从 GitHub 装新版本',
+            '<path d="M7.3 17.5a4 4 0 0 1-.4-7.98 5.5 5.5 0 0 1 10.66-.7A3.7 3.7 0 0 1 17.8 17.5"/><path d="M12 11.2v6.2"/><path d="M9.7 15 12 17.3 14.3 15"/>',
+        ),
     );
+
+    /* 分区：看数据 → 管数据 → 管系统。菜单少时分组反而碍眼，
+     * 超过 4 项就值得分段，眼睛找得更快。 */
+    $groups = array(
+        '概览' => array('index.php'),
+        '数据' => array('list.php', 'stats.php', 'maintenance.php'),
+        '系统' => array('settings.php', 'update.php'),
+    );
+
     $ver   = ZAN_VERSION;
     $hint  = zan_update_hint();
     $admin = zan_admin();
@@ -1068,20 +1208,24 @@ function zan_admin_header($title, $active)
         </div>
     </div>
     <nav class="za-nav">
-    <?php foreach ($items as $file => $meta) : ?>
+    <?php foreach ($groups as $groupTitle => $files) : ?>
+        <div class="za-nav-title"><?php echo zan_h($groupTitle); ?></div>
+        <?php foreach ($files as $file) : ?>
+            <?php if (!isset($items[$file])) { continue; } $meta = $items[$file]; ?>
         <a href="<?php echo zan_h(zan_url('admin/' . $file)); ?>" class="<?php echo $active === $file ? 'is-active' : ''; ?>"<?php echo $file === 'update.php' ? ' data-nav="update"' : ''; ?> title="<?php echo zan_h($meta[1]); ?>">
             <svg viewBox="0 0 24 24" aria-hidden="true"><?php echo $meta[2]; ?></svg>
             <span><?php echo zan_h($meta[0]); ?></span>
             <?php if ($file === 'update.php' && $hint !== '') : ?><i class="za-dot" title="有新版本"></i><?php endif; ?>
         </a>
+        <?php endforeach; ?>
     <?php endforeach; ?>
     </nav>
     <div class="za-side-foot">
         <div class="za-side-tip">
             <b><?php echo zan_h(ZAN_TAGLINE); ?></b>
-            <span>点赞只在内容页，统计覆盖全站</span>
+            <span>内容页点赞 · 全站统计</span>
         </div>
-        <a class="za-logout" href="<?php echo zan_h(zan_url('admin/logout.php')); ?>">退出登录</a>
+        <a class="za-logout" href="<?php echo zan_h(zan_url('admin/logout.php?nonce=' . zan_csrf())); ?>">退出登录</a>
     </div>
 </aside>
 <main class="za-main">

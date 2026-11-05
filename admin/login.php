@@ -22,15 +22,19 @@ $error = '';
 $email = '';
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-    $pass  = isset($_POST['password']) ? (string) $_POST['password'] : '';
+    $email = trim(zan_post_str('email'));
+    $pass  = zan_post_str('password');
 
     $tries = isset($_SESSION['zan_login_tries']) ? (int) $_SESSION['zan_login_tries'] : 0;
     $last  = isset($_SESSION['zan_login_last']) ? (int) $_SESSION['zan_login_last'] : 0;
+    /* 两把锁：session 里的（快），IP 维度的（换 Cookie 也绕不过） */
+    $wait  = zan_login_throttle_left();
 
-    if ($tries >= 8 && time() - $last < 600) {
+    if ($wait > 0) {
+        $error = '尝试次数过多，请 ' . (int) ceil($wait / 60) . ' 分钟后再试。';
+    } elseif ($tries >= 8 && time() - $last < 600) {
         $error = '尝试次数过多，请 10 分钟后再试。';
-    } elseif (!zan_csrf_ok(isset($_POST['nonce']) ? $_POST['nonce'] : '')) {
+    } elseif (!zan_csrf_ok(zan_post_str('nonce'))) {
         $error = '页面已过期，请重新提交。';
     } elseif ($email === '' || $pass === '') {
         $error = '请填写邮箱和密码。';
@@ -51,6 +55,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             $_SESSION['zan_admin_id']    = (int) $row['id'];
             $_SESSION['zan_admin_email'] = (string) $row['email'];
             unset($_SESSION['zan_login_tries'], $_SESSION['zan_login_last']);
+            zan_login_throttle_clear();
             zan_csrf_rotate();
             header('Location: ' . zan_url('admin/index.php'));
             exit;
@@ -59,6 +64,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             $error = '邮箱或密码不正确。';
             $_SESSION['zan_login_tries'] = $tries + 1;
             $_SESSION['zan_login_last']  = time();
+            zan_login_throttle_hit();
             usleep(300000);
         }
     }
@@ -85,7 +91,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         <input id="email" name="email" type="email" value="<?php echo zan_h($email); ?>" autocomplete="username" autofocus required />
         <label for="password">密码</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required />
-        <button type="submit" class="za-btn">登录</button>
+        <button type="submit" class="za-btn is-primary">登录</button>
     </form>
     <p class="za-login-foot"><?php echo zan_h(ZAN_BRAND); ?> v<?php echo zan_h(ZAN_VERSION); ?></p>
 </main>

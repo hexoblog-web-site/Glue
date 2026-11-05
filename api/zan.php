@@ -22,7 +22,14 @@ require dirname(__DIR__) . '/include/common.php';
 require_once dirname(__DIR__) . '/include/schema.php';
 
 $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
-$action = isset($_REQUEST['action']) ? (string) $_REQUEST['action'] : ($method === 'POST' ? 'like' : 'query');
+/* 不用 $_REQUEST：它的组成受 request_order 影响，容易把同名 Cookie 混进来 */
+$action = zan_post_str('action');
+if ($action === '') {
+    $action = zan_get_str('action');
+}
+if ($action === '') {
+    $action = ($method === 'POST' ? 'like' : 'query');
+}
 
 /* 只读接口（query / site）返回的只是公开计数，直接放开 *，不怕白名单漏配；
    写接口仍只认白名单，挡住别的站点伪造点赞并读结果。 */
@@ -50,8 +57,9 @@ function zan_api_target()
 {
     $raw = '';
     foreach (array('url', 'key', 'path') as $k) {
-        if (!empty($_POST[$k])) {
-            $raw = (string) $_POST[$k];
+        $v = zan_post_str($k);
+        if ($v !== '') {
+            $raw = $v;
             break;
         }
     }
@@ -150,9 +158,9 @@ if ($action === 'like') {
         zan_json(400, '点赞请用 POST');
     }
 
-    $key   = zan_norm_key(isset($_POST['key']) ? $_POST['key'] : '');
-    $vid   = isset($_POST['vid']) ? (string) $_POST['vid'] : '';
-    $title = isset($_POST['title']) ? (string) $_POST['title'] : '';
+    $key   = zan_norm_key(zan_post_str('key'));
+    $vid   = zan_post_str('vid');
+    $title = zan_post_str('title');
 
     if ($key === '') {
         zan_json(400, '无效的文章标识');
@@ -219,11 +227,11 @@ if ($action === 'pageview' || $action === 'view') {
         zan_json(400, '无效的页面标识');
     }
 
-    $title    = isset($_POST['title']) ? (string) $_POST['title'] : '';
-    $referrer = isset($_POST['referrer']) ? (string) $_POST['referrer'] : '';
-    $screen   = isset($_POST['screen']) ? (string) $_POST['screen'] : '';
-    $language = isset($_POST['language']) ? (string) $_POST['language'] : '';
-    $hostname = isset($_POST['hostname']) ? (string) $_POST['hostname'] : '';
+    $title    = zan_post_str('title');
+    $referrer = zan_post_str('referrer');
+    $screen   = zan_post_str('screen');
+    $language = zan_post_str('language');
+    $hostname = zan_post_str('hostname');
     if ($hostname === '' && !empty($_SERVER['HTTP_HOST'])) {
         $hostname = (string) $_SERVER['HTTP_HOST'];
     }

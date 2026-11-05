@@ -44,9 +44,9 @@ if (isset($_GET['done'])) {
     $notice = array($msg . '。', 'ok');
 }
 
-$q       = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
-$detail  = zan_norm_key(isset($_GET['key']) ? $_GET['key'] : '');
-$pageNo  = max(1, isset($_GET['p']) ? (int) $_GET['p'] : 1);
+$q       = trim(zan_get_str('q'));
+$detail  = zan_norm_key(zan_get_str('key'));
+$pageNo  = max(1, (int) zan_get_str('p', '1'));
 $perPage = 20;
 
 zan_admin_header($detail !== '' ? '页面记录' : '点赞统计', 'list.php');
@@ -130,8 +130,10 @@ if ($detail !== '') {
 $where  = '';
 $params = array();
 if ($q !== '') {
+    /* 用户输入的 % 和 _ 是字面量，不是通配符；不转义的话搜 "%" 会一次列出全表 */
+    $like   = '%' . str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $q) . '%';
     $where  = ' WHERE (`page_key` LIKE ? OR `title` LIKE ?)';
-    $params = array('%' . $q . '%', '%' . $q . '%');
+    $params = array($like, $like);
 }
 
 $totalRows = $pdo->prepare('SELECT COUNT(*) FROM ' . zan_table('page') . $where);
@@ -140,18 +142,13 @@ $totalPages = max(1, (int) ceil((int) $totalRows->fetchColumn() / $perPage));
 $pageNo     = min($pageNo, $totalPages);
 $offset     = ($pageNo - 1) * $perPage;
 
-$viewCol = zan_stats_ready()
-    ? '(SELECT COUNT(*) FROM ' . zan_table('event') . ' v WHERE v.`url_path` = p.`page_key` AND v.`event_type` = 1)'
-    : '0';
-$uvCol = zan_stats_ready()
-    ? '(SELECT COUNT(DISTINCT v.`session_id`) FROM ' . zan_table('event') . ' v WHERE v.`url_path` = p.`page_key` AND v.`event_type` = 1)'
-    : '0';
+$rank = zan_page_rank_cols('p');
 
 $sql = 'SELECT p.`page_key`, p.`title`,'
-    . ' (SELECT COUNT(*) FROM ' . zan_table('log') . ' l WHERE l.`page_key` = p.`page_key`) AS likes,'
-    . ' ' . $viewCol . ' AS views,'
-    . ' ' . $uvCol . ' AS visitors,'
-    . ' (SELECT MAX(l.`created_at`) FROM ' . zan_table('log') . ' l WHERE l.`page_key` = p.`page_key`) AS last_at'
+    . ' ' . $rank['likes'] . ' AS likes,'
+    . ' ' . $rank['views'] . ' AS views,'
+    . ' ' . $rank['visitors'] . ' AS visitors,'
+    . ' ' . $rank['last_at'] . ' AS last_at'
     . ' FROM ' . zan_table('page') . ' p'
     . ($where !== '' ? str_replace(array('`page_key`', '`title`'), array('p.`page_key`', 'p.`title`'), $where) : '')
     . ' ORDER BY views DESC, likes DESC, p.`updated_at` DESC LIMIT ' . $perPage . ' OFFSET ' . $offset;
@@ -165,7 +162,7 @@ if ($notice) {
 ?>
 <form class="za-filter" method="get" action="<?php echo zan_h(zan_url('admin/list.php')); ?>">
     <input type="search" name="q" value="<?php echo zan_h($q); ?>" placeholder="按地址或标题搜索" />
-    <button type="submit" class="za-btn">搜索</button>
+    <button type="submit" class="za-btn is-primary">搜索</button>
     <?php if ($q !== '') : ?>
         <a class="za-link" href="<?php echo zan_h(zan_url('admin/list.php')); ?>">清除</a>
     <?php endif; ?>

@@ -117,7 +117,7 @@ if ($notice) {
             反代没配好时，所有访客会被当成同一个人（浏览次数照常涨，访客数一直是 1）。</p>
     </div>
 
-    <p><button type="submit" class="za-btn">保存设置</button></p>
+    <p><button type="submit" class="za-btn is-primary">保存设置</button></p>
 </form>
 
 <div class="za-card">

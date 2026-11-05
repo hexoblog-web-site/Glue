@@ -12,6 +12,10 @@ if (!defined('ZAN_APP')) {
 
 class Zan_Zip_Reader
 {
+    /** 单个文件解压后的上限：程序里最大的文件也就一百多 KB，
+     *  8MB 足够；没有这道闸，20MB 的 deflate 能解出几个 GB 把内存打爆（zip bomb）。 */
+    const MAX_ENTRY = 8388608;
+
     /** @var resource|null */
     protected $fp = null;
 
@@ -71,6 +75,15 @@ class Zan_Zip_Reader
         }
         $e = $this->entries[$name];
 
+        /* 先按中央目录声明的大小拦一道，解压前就知道会不会炸内存 */
+        if ((int) $e['usize'] > self::MAX_ENTRY) {
+            $this->error = '文件解压后过大（' . (int) $e['usize'] . ' 字节）：' . $name;
+            return false;
+        }
+        if ((int) $e['csize'] > self::MAX_ENTRY) {
+            $this->error = '文件压缩体积异常：' . $name;
+            return false;
+        }
         /* 本地文件头里的名称/额外字段长度可能与中央目录不同，必须重新读 */
         if (fseek($this->fp, (int) $e['offset']) !== 0) {
             $this->error = '读取文件头失败';

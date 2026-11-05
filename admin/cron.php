@@ -12,8 +12,7 @@
 define('ZAN_APP', true);
 require dirname(__DIR__) . '/include/common.php';
 require dirname(__DIR__) . '/include/mailer.php';
-require dirname(__DIR__) . '/include/zipreader.php';
-require dirname(__DIR__) . '/include/updater.php';
+require dirname(__DIR__) . '/include/updater.php';   /* 更新器自己会带上 zipreader */
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -32,11 +31,18 @@ if ($real === '' || $token === '' || !hash_equals($real, $token)) {
 $r = zan_upd_auto_run(25, $err);
 
 if ($r === false) {
+    if (!zan_upd_auto_check()) {
+        $why = '自动检查已关闭（后台「系统更新」里可以打开）';
+    } elseif (zan_upd_repo() === '') {
+        $why = '还没有填 GitHub 仓库地址';
+    } else {
+        $why = '还没到检查时间，或另一个进程正在检查';
+    }
     echo json_encode(array(
         'ok'         => true,
         'ran'        => false,
         'has_update' => zan_upd_available_cached(),
-        'msg'        => zan_upd_auto_check() ? '还没到检查时间，或另一个进程正在检查' : '自动检查已关闭',
+        'msg'        => $why,
     ), JSON_UNESCAPED_UNICODE);
     exit;
 }
