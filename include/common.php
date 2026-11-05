@@ -875,6 +875,61 @@ function zan_page_rank_cols($alias = 'p')
  * ------------------------------------------------------------------------- */
 
 /**
+ * 归一化一个 Origin 或白名单项。
+ *
+ * 浏览器发来的 Origin 永远是 `scheme://host[:port]`，不带路径、不带结尾斜杠；
+ * 而白名单是手填的，从地址栏复制就会多一个 `/`，只写裸域名也很常见。
+ * 直接用 in_array 精确比对，这几种写法一个都匹配不上，而且失败是静默的：
+ * 请求照样送达服务端、数据照样写入，只是浏览器读不到响应 ——
+ * 前端于是报「网络错误」，用户刷新却发现计数已经 +1。
+ */
+function zan_origin_norm($origin)
+{
+    $o = strtolower(trim((string) $origin));
+    $o = rtrim($o, '/');
+    /* 只写了域名：按 https 补全 */
+    if ($o !== '' && strpos($o, '://') === false) {
+        $o = 'https://' . $o;
+    }
+    /* 默认端口不参与比较 */
+    $o = preg_replace('#:(80|443)$#', '', $o);
+    return $o;
+}
+
+/** 取 scheme 之后的部分，用来忽略 http / https 的差异 */
+function zan_origin_host($origin)
+{
+    return preg_replace('#^[a-z][a-z0-9+.-]*://#', '', zan_origin_norm($origin));
+}
+
+/** Origin 是否命中白名单（容忍尾斜杠、大小写、裸域名、默认端口） */
+function zan_cors_match($origin, array $allowed)
+{
+    $o = zan_origin_norm($origin);
+    if ($o === '') {
+        return false;
+    }
+    $host = zan_origin_host($origin);
+    foreach ($allowed as $item) {
+        $item = trim((string) $item);
+        if ($item === '') {
+            continue;
+        }
+        if ($item === '*') {
+            return true;
+        }
+        if (zan_origin_norm($item) === $o) {
+            return true;
+        }
+        /* 白名单写的是裸域名时，http 与 https 都放行 */
+        if (strpos($item, '://') === false && zan_origin_host($item) === $host) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * 跨域头。
  *
  * $public = true 用于只读接口（query / site）：返回的只有公开计数，不带 Cookie、
@@ -893,7 +948,7 @@ function zan_cors($public = false)
 
     if ($public || $origin === '') {
         header('Access-Control-Allow-Origin: *');
-    } elseif (!$allowed || in_array($origin, $allowed, true)) {
+    } elseif (!$allowed || zan_cors_match($origin, $allowed)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Vary: Origin');
     }

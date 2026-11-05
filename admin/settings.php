@@ -26,7 +26,13 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             return array_values(array_unique($out));
         };
 
-        $origins = $lines(isset($_POST['allowed_origins']) ? $_POST['allowed_origins'] : '');
+        $origins = array();
+        foreach ($lines(isset($_POST['allowed_origins']) ? $_POST['allowed_origins'] : '') as $line) {
+            /* 存归一化后的值：浏览器发来的 Origin 没有结尾斜杠，
+               这里也去掉，免得存进去的写法在运行时永远匹配不上 */
+            $origins[] = $line === '*' ? '*' : zan_origin_norm($line);
+        }
+        $origins = array_values(array_unique(array_filter($origins)));
         $proxies = $lines(isset($_POST['trusted_proxies']) ? $_POST['trusted_proxies'] : '');
 
         $ok = zan_config_save(array(
@@ -108,7 +114,12 @@ if ($notice) {
         <label for="allowed_origins">允许调用接口的站点（跨域白名单）</label>
         <textarea id="allowed_origins" name="allowed_origins" rows="3"
                   placeholder="https://www.example.com"><?php echo zan_h($origins); ?></textarea>
-        <p class="za-desc">一行一个，留空表示不限制。博客和接口不同域时才需要填，必须带 <code>https://</code>。</p>
+        <p class="za-desc">一行一个，留空表示不限制。博客和接口不同域时才需要填。
+            要填的是浏览器地址栏里的 <code>协议://域名</code>：<b>不要带结尾斜杠</b>，也不要带路径。
+            <code>https://www.example.com</code> 与 <code>https://example.com</code>
+            是两个不同的来源，两种写法都要能访问就都写上。<br>
+            填错不会报错，但点赞会提示「网络错误」而计数其实已经 +1：
+            服务端照常写入，只是浏览器读不到响应。</p>
 
         <label for="trusted_proxies">反向代理 IP</label>
         <textarea id="trusted_proxies" name="trusted_proxies" rows="2"

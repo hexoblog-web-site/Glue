@@ -1,9 +1,13 @@
 /*!
- * zan.js 2.0.2 - Sugar-Box：点赞 + 网站统计（内置样式版）
+ * zan.js 2.0.5 - Sugar-Box：点赞 + 网站统计（内置样式版）
  * 接入：<script src="https://你的域名/api/js/zan.js" data-server="https://你的域名" defer></script>
  * 点赞：<div data-zan data-zan-scope="content"></div>（内容页专用；列表页请勿加 scope）
  * 阅读：<span data-zan-view></span>（显示这一页的浏览次数）
  *        <span data-zan-view data-zan-scope="site"></span>（显示全站累计）
+ *
+ * 2.0.5
+ *   - 点赞响应被浏览器拦下时（跨域白名单没配对），用只读接口复核数字，
+ *     不再把「已经写进数据库」的点赞误报成网络错误
  *
  * 2.0.2
  *   - 统计不再由容器触发：脚本一加载就给当前页记一条浏览，首页 / 归档 / 标签页都算
@@ -21,7 +25,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.0.2';
+  var VERSION = '2.0.5';
 
   var script = document.currentScript || (function () {
     var all = document.querySelectorAll('script[src*="zan.js"]');
@@ -247,6 +251,16 @@
     }).then(function (r) { return r.json(); });
   }
 
+  function markError(g) {
+    for (var i = 0; i < g.items.length; i++) {
+      var el = g.items[i].el;
+      el.classList.add('is-error');
+      (function (n) {
+        setTimeout(function () { n.classList.remove('is-error'); }, 1800);
+      })(el);
+    }
+  }
+
   function vote(g) {
     if (g.busy) return;
     if (g.liked && g.once) return;
@@ -257,15 +271,24 @@
     paint(g);
     pop(g);
 
+    function settle() {
+      g.busy = false;
+      busy(g, false);
+      paint(g);
+      fire(g);
+    }
+
+    function done(likes) {
+      g.likes = typeof likes === 'number' ? likes : prev;
+      g.liked = true;
+      likedSet(g.key);
+    }
+
     apiLike(g.key, g.force).then(function (d) {
       if (d && d.code === 0 && d.data) {
-        g.likes = d.data.likes;
-        g.liked = true;
-        likedSet(g.key);
+        done(d.data.likes);
       } else if (d && d.code === 2) {
-        g.likes = d.data && typeof d.data.likes === 'number' ? d.data.likes : prev;
-        g.liked = true;
-        likedSet(g.key);
+        done(d.data && typeof d.data.likes === 'number' ? d.data.likes : prev);
       } else if (d && d.code === 403) {
         g.likes = prev;
         try { console.warn('[Sugar-Box] ' + (d.message || '只能在内容页点赞')); } catch (e) {}
@@ -273,20 +296,22 @@
         g.likes = prev;
         throw new Error('failed');
       }
+      settle();
     }).catch(function () {
-      g.likes = prev;
-      for (var i = 0; i < g.items.length; i++) {
-        var el = g.items[i].el;
-        el.classList.add('is-error');
-        (function (n) {
-          setTimeout(function () { n.classList.remove('is-error'); }, 1800);
-        })(el);
-      }
-    }).then(function () {
-      g.busy = false;
-      busy(g, false);
-      paint(g);
-      fire(g);
+      /* 跨域白名单没配全时浏览器会拦住响应，可请求早就到了服务端、也已经写库。
+         直接报错，用户看到的就是「提示网络错误，刷新却多了一个赞」。
+         用只读接口复核一次：数字比点之前大，说明真的写进去了，按成功收尾。 */
+      apiQuery([g.key], function (data) {
+        var row = data && data[g.key];
+        var n = row && typeof row.likes === 'number' ? row.likes : null;
+        if (n !== null && n > prev) {
+          done(n);
+        } else {
+          g.likes = prev;
+          markError(g);
+        }
+        settle();
+      });
     });
   }
 
