@@ -1,11 +1,11 @@
 /*!
- * zan.js 2.0.1 - Sugar-Box：点赞 + 网站统计（内置样式版）
+ * zan.js 2.0.2 - Sugar-Box：点赞 + 网站统计（内置样式版）
  * 接入：<script src="https://你的域名/api/js/zan.js" data-server="https://你的域名" defer></script>
  * 点赞：<div data-zan data-zan-scope="content"></div>（内容页专用；列表页请勿加 scope）
  * 阅读：<span data-zan-view></span>（显示这一页的浏览次数）
  *        <span data-zan-view data-zan-scope="site"></span>（显示全站累计）
  *
- * 2.0.1
+ * 2.0.2
  *   - 统计不再由容器触发：脚本一加载就给当前页记一条浏览，首页 / 归档 / 标签页都算
  *   - 写入模型照 Umami：每次浏览一条事件，访客 / 访问次数由服务端按 session / visit 推导
  *   - 点赞仍然只允许内容页：容器 key 必须等于当前页路径，其余页面只读数字
@@ -21,7 +21,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.0.1';
+  var VERSION = '2.0.2';
 
   var script = document.currentScript || (function () {
     var all = document.querySelectorAll('script[src*="zan.js"]');

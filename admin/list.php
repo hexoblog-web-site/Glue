@@ -49,7 +49,7 @@ $detail  = zan_norm_key(isset($_GET['key']) ? $_GET['key'] : '');
 $pageNo  = max(1, isset($_GET['p']) ? (int) $_GET['p'] : 1);
 $perPage = 20;
 
-zan_admin_header($detail !== '' ? '页面记录' : '点赞明细', 'list.php');
+zan_admin_header($detail !== '' ? '页面记录' : '点赞统计', 'list.php');
 
 /* ---------------------------------------------------------------- 单页详情 */
 if ($detail !== '') {

@@ -2,26 +2,40 @@
 :root {
     --za-bg: #f6f7f9;
     --za-panel: #ffffff;
+    --za-soft: #f4f5f7;
     --za-line: #e3e6ea;
     --za-text: #1d2327;
     --za-muted: #6b7280;
-    --za-accent: #3858e9;
+    --za-accent: #2563eb;
+    --za-brand: #2563eb;
+    --za-brand-strong: #1d4ed8;
+    --za-brand-soft: #edf3ff;
     --za-danger: #d6336c;
     --za-ok: #2f9e44;
     --za-warn: #c47f00;
-    --za-radius: 10px;
+    --za-radius: 16px;
+    --za-shadow: 0 1px 2px rgba(17, 24, 39, .04);
+    --za-shadow-float: 0 10px 30px rgba(17, 24, 39, .12);
+    --za-top-bg: rgba(246, 247, 249, .92);
 }
 @media (prefers-color-scheme: dark) {
     :root {
         --za-bg: #14161a;
         --za-panel: #1b1e24;
+        --za-soft: #23272e;
         --za-line: #2a2f38;
         --za-text: #e6e8eb;
         --za-muted: #9aa3af;
         --za-accent: #6b8afd;
-    --za-danger: #ff6b96;
-    --za-ok: #51cf66;
-    --za-warn: #ffc078;
+        --za-brand: #6b8afd;
+        --za-brand-strong: #a9bcff;
+        --za-brand-soft: rgba(107, 138, 253, .16);
+        --za-danger: #ff6b96;
+        --za-ok: #51cf66;
+        --za-warn: #ffc078;
+        --za-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+        --za-shadow-float: 0 10px 30px rgba(0, 0, 0, .5);
+        --za-top-bg: rgba(20, 22, 26, .92);
     }
 }
 
@@ -29,67 +43,138 @@
 html, body { height: 100%; }
 body.za {
     margin: 0;
+    padding: 12px;
+    gap: 12px;
     background: var(--za-bg);
     color: var(--za-text);
-    font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
     display: flex;
+    align-items: flex-start;
+    min-height: 100vh;
 }
 a { color: var(--za-accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 125, 125, .12); padding: 1px 5px; border-radius: 4px; }
 
-/* 侧栏 */
+/* 侧栏：浮岛白卡，浅灰底上浮起来，靠圆角与阴影分层，不用边线 */
 .za-side {
-    width: 232px;
-    flex: 0 0 232px;
+    width: 216px;
+    flex: 0 0 216px;
     background: var(--za-panel);
-    border-right: 1px solid var(--za-line);
+    border-radius: 20px;
+    box-shadow: var(--za-shadow);
     display: flex;
     flex-direction: column;
-    padding: 22px 14px 16px;
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: 12px;
+    height: calc(100vh - 24px);
+    overflow: hidden;
 }
-.za-brand { font-weight: 700; font-size: 16px; padding: 0 8px 18px; }
-.za-nav { display: flex; flex-direction: column; gap: 2px; }
+.za-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px 14px; }
+.za-logo {
+    width: 34px; height: 34px; border-radius: 11px; flex: 0 0 34px;
+    background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+    color: #fff; font-weight: 700; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+}
+.za-brand-text { min-width: 0; }
+.za-brand-text b { display: block; font-weight: 700; font-size: 14.5px; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.za-brand-text em { display: block; font-style: normal; font-size: 11px; color: var(--za-muted); }
+
+.za-nav { padding: 2px 10px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 .za-nav a {
-    display: block;
-    padding: 9px 10px;
-    border-radius: 8px;
-    color: var(--za-text);
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 12px;
+    color: var(--za-text); font-size: 13.5px;
+    transition: background .15s ease, color .15s ease;
 }
-.za-nav a span { display: block; font-size: 14px; font-weight: 500; }
-.za-nav a em { display: block; font-style: normal; font-size: 12px; color: var(--za-muted); }
-.za-nav a:hover { background: rgba(125, 125, 125, .1); text-decoration: none; }
-.za-nav a.is-active { background: var(--za-accent); color: #fff; }
-.za-nav a.is-active em { color: rgba(255, 255, 255, .75); }
-.za-side-foot {
-    margin-top: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
+.za-nav a svg {
+    width: 18px; height: 18px; flex: 0 0 18px;
+    stroke: currentColor; fill: none; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round;
     color: var(--za-muted);
-    padding: 12px 8px 0;
-    border-top: 1px solid var(--za-line);
 }
+.za-nav a span { flex: 1; }
+.za-nav a:hover { background: var(--za-soft); text-decoration: none; }
+.za-nav a:hover svg { color: var(--za-muted); }
+.za-nav a.is-active { background: var(--za-brand-soft); color: var(--za-brand-strong); font-weight: 600; }
+.za-nav a.is-active svg { color: var(--za-brand); stroke-width: 2; }
+
+.za-side-foot { padding: 10px; }
+.za-side-tip { background: var(--za-soft); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.za-side-tip b { display: block; font-size: 12.5px; color: var(--za-text); }
+.za-side-tip span { display: block; font-size: 11.5px; line-height: 1.5; color: var(--za-muted); }
+.za-logout {
+    display: block; text-align: center; padding: 8px;
+    border-radius: 999px; background: var(--za-soft);
+    color: var(--za-muted); font-size: 12.5px;
+}
+.za-logout:hover { background: color-mix(in srgb, var(--za-danger) 12%, transparent); color: var(--za-danger); text-decoration: none; }
 
 /* 主体 */
 .za-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.za-top { padding: 24px 32px 0; }
-.za-top h1 { font-size: 20px; margin: 0; }
-.za-body { padding: 18px 32px 56px; max-width: 1000px; width: 100%; }
+.za-top {
+    display: flex; align-items: center; gap: 14px;
+    padding: 6px 0 16px;
+    position: sticky; top: 0; z-index: 20;
+    background: var(--za-top-bg);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.za-heading { min-width: 0; }
+.za-top h1 { font-size: 24px; font-weight: 700; letter-spacing: -.5px; line-height: 1.25; margin: 0; }
+.za-page-sub { font-size: 12px; color: var(--za-muted); margin-top: 2px; }
+.za-top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.za-top-link { color: var(--za-muted); font-size: 12.5px; }
+.za-top-link:hover { color: var(--za-brand); text-decoration: none; }
+.za-user {
+    background: var(--za-panel); border-radius: 999px; padding: 5px 13px;
+    color: var(--za-muted); font-size: 12.5px; box-shadow: var(--za-shadow);
+    max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.za-top-ver {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: color-mix(in srgb, var(--za-warn) 14%, transparent);
+    color: var(--za-warn); border-radius: 999px; padding: 5px 12px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.za-top-ver::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--za-warn); }
+.za-top-ver:hover { text-decoration: none; }
+.za-menu-btn {
+    display: none; border: 0; background: var(--za-panel); color: var(--za-muted);
+    border-radius: 9px; padding: 6px 10px; cursor: pointer; font-size: 15px; line-height: 1;
+    box-shadow: var(--za-shadow);
+}
+.za-body { padding: 0 0 44px; max-width: 1000px; width: 100%; }
 
-/* 卡片 */
+/* 窄屏：侧栏收成抽屉，靠左上角的按钮展开 */
+@media (max-width: 900px) {
+    body.za { padding: 10px; }
+    .za-side {
+        position: fixed; left: -232px; top: 10px; z-index: 60;
+        height: calc(100vh - 20px);
+        transition: left .2s ease;
+        box-shadow: var(--za-shadow-float);
+    }
+    .za-side.is-open { left: 10px; }
+    .za-menu-btn { display: inline-block; }
+    .za-top h1 { font-size: 21px; }
+}
+@media (max-width: 560px) {
+    .za-top-link { display: none; }
+    .za-top-actions { gap: 8px; }
+    .za-user { display: none; }
+}
+
+/* 卡片：无边框，靠白底与阴影从灰底上浮起来；危险态用内描边，避免撑高 */
 .za-card {
     background: var(--za-panel);
-    border: 1px solid var(--za-line);
+    border: 0;
     border-radius: var(--za-radius);
     padding: 18px 20px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--za-shadow);
 }
-.za-card.is-danger { border-color: color-mix(in srgb, var(--za-danger) 40%, var(--za-line)); }
+.za-card.is-danger { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--za-danger) 40%, transparent); }
 .za-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .za-card-head h2 { font-size: 15px; margin: 0; }
 .za-desc { color: var(--za-muted); font-size: 13px; margin: 4px 0 12px; }
@@ -136,9 +221,9 @@ code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 1
 .za-form input[type=text], .za-form input[type=color], .za-form select, .za-form textarea,
 .za-card input[type=text], .za-card input[type=file], .za-card textarea {
     width: 100%;
-    padding: 9px 11px;
+    padding: 9px 12px;
     border: 1px solid var(--za-line);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--za-bg);
     color: var(--za-text);
     font: inherit;
@@ -154,11 +239,11 @@ code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 1
     display: inline-block;
     padding: 9px 16px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 999px;
     background: var(--za-accent);
     color: #fff;
     font: inherit;
-    font-size: 14px;
+    font-size: 13.5px;
     cursor: pointer;
 }
 .za-btn:hover { filter: brightness(1.08); text-decoration: none; }
@@ -166,7 +251,7 @@ code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 1
 .za-link { margin-left: 10px; font-size: 13px; }
 
 /* 提示条 */
-.za-notice { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; border: 1px solid transparent; }
+.za-notice { padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 14px; border: 1px solid transparent; }
 .za-notice.is-ok { background: color-mix(in srgb, var(--za-ok) 12%, transparent); border-color: color-mix(in srgb, var(--za-ok) 35%, transparent); }
 .za-notice.is-error { background: color-mix(in srgb, var(--za-danger) 12%, transparent); border-color: color-mix(in srgb, var(--za-danger) 35%, transparent); }
 
@@ -185,8 +270,8 @@ code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 1
 .za-pill { font-size: 12px; padding: 2px 9px; border-radius: 99px; background: color-mix(in srgb, var(--za-accent) 14%, transparent); color: var(--za-accent); }
 .za-pill.is-new { background: color-mix(in srgb, var(--za-warn) 18%, transparent); color: var(--za-warn); }
 .za-pill.is-ok { background: color-mix(in srgb, var(--za-ok) 16%, transparent); color: var(--za-ok); }
-.za-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--za-danger); margin-left: 6px; vertical-align: 2px; }
-.za-nav a.is-active .za-dot { background: #fff; }
+.za-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--za-danger); margin-left: auto; flex: 0 0 7px; }
+.za-nav a.is-active .za-dot { background: var(--za-danger); }
 
 /* 更新页 */
 .za-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
@@ -196,9 +281,9 @@ code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: rgba(125, 1
 .za-btn[disabled] { opacity: .5; cursor: not-allowed; }
 .za-card input[type=email], .za-card input[type=password], .za-card input[type=number], .za-card select {
     width: 100%;
-    padding: 9px 11px;
+    padding: 9px 12px;
     border: 1px solid var(--za-line);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--za-bg);
     color: var(--za-text);
     font: inherit;
@@ -214,18 +299,20 @@ body.za-login { display: block; }
     max-width: 380px;
     margin: 12vh auto 0;
     background: var(--za-panel);
-    border: 1px solid var(--za-line);
-    border-radius: 14px;
+    border: 0;
+    border-radius: 20px;
+    box-shadow: var(--za-shadow-float);
     padding: 28px;
 }
-.za-login-card .za-brand { padding: 0 0 6px; color: var(--za-muted); font-size: 13px; font-weight: 500; }
+/* 登录页借用 .za-brand 做小标题：这里必须收回侧栏的 flex 布局 */
+.za-login-card .za-brand { display: block; padding: 0 0 6px; color: var(--za-muted); font-size: 13px; font-weight: 500; }
 .za-login-card h1 { font-size: 20px; margin: 0 0 16px; }
 .za-login-card label { display: block; font-size: 13px; margin: 12px 0 6px; }
 .za-login-card input {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--za-line);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--za-bg);
     color: var(--za-text);
     font: inherit;
@@ -233,16 +320,11 @@ body.za-login { display: block; }
 .za-login-card .za-btn { width: 100%; margin-top: 20px; }
 .za-login-foot { text-align: center; color: var(--za-muted); font-size: 12px; margin: 18px 0 0; }
 
-@media (max-width: 720px) {
-    body.za { display: block; }
-    .za-side { position: static; width: auto; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; border-right: 0; border-bottom: 1px solid var(--za-line); padding: 12px; }
-    .za-brand { padding: 0 6px 0 0; }
-    .za-nav { flex-direction: row; flex-wrap: wrap; }
-    .za-nav a em { display: none; }
-    .za-side-foot { border: 0; padding: 0; margin-left: auto; gap: 10px; }
-    .za-top { padding: 16px 16px 0; }
-    .za-body { padding: 14px 16px 40px; }
-    .za-cards { grid-template-columns: 1fr; }
+/* 窄屏卡片改成单列（侧栏的抽屉逻辑在上面 900px 断点里） */
+@media (max-width: 640px) {
+    .za-cards { grid-template-columns: 1fr 1fr; }
+    .za-card { padding: 16px; }
+    .za-body { padding-bottom: 30px; }
 }
 
 /* 统计页：时间范围切换与两列排行 */

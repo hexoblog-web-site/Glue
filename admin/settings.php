@@ -55,7 +55,7 @@ if (isset($_GET['done'])) {
     $notice = array('已保存。', 'ok');
 }
 
-zan_admin_header('设置', 'settings.php');
+zan_admin_header('系统设置', 'settings.php');
 if ($notice) {
     zan_notice(zan_h($notice[0]), $notice[1]);
 }

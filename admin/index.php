@@ -63,7 +63,7 @@ $snippet = '<div data-zan data-zan-scope="content"></div>' . "\n"
     . '<span data-zan-view></span>' . "\n"
     . '<script src="' . $server . '/api/js/zan.js" data-server="' . $server . '" defer></script>';
 
-zan_admin_header('概览', 'index.php');
+zan_admin_header('仪表盘', 'index.php');
 ?>
 
 <div class="za-cards">

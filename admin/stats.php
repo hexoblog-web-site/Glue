@@ -116,7 +116,7 @@ function zan_stats_table(array $rows, $empty = '还没有数据')
     echo '</tbody></table>';
 }
 
-zan_admin_header('统计', 'stats.php');
+zan_admin_header('网站统计', 'stats.php');
 ?>
 
 <div class="za-range">

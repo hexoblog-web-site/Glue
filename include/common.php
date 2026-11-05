@@ -1015,16 +1015,40 @@ function zan_update_auto_due()
 
 function zan_admin_header($title, $active)
 {
+    /* 侧栏菜单：文件名 => array(名称, 一句话说明, 内联图标)
+     * 图标统一 24 视图框、线性描边，尺寸与颜色交给 CSS（.za-nav svg）。
+     * 顺序即侧栏顺序：天天看的在上，配置类沉到底部。 */
     $items = array(
-        'index.php'       => array('概览', '点赞与全站概况'),
-        'stats.php'       => array('统计', '访问趋势与来源'),
-        'list.php'        => array('点赞明细', '按页面汇总，可展开记录'),
-        'settings.php'    => array('设置', '站点名称与统计口径'),
-        'maintenance.php' => array('数据维护', '备份、恢复、清空'),
-        'update.php'      => array('系统更新', '从 GitHub 拉新版本'),
+        'index.php'       => array(
+            '仪表盘', '今天的点赞与浏览',
+            '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+        ),
+        'stats.php'       => array(
+            '网站统计', '访问趋势、来源与访客',
+            '<path d="M4.5 19.5V12M9.8 19.5V6M15.1 19.5v-5M20.4 19.5V9"/><path d="M3 19.5h18"/>',
+        ),
+        'list.php'        => array(
+            '点赞统计', '每篇文章收到多少赞',
+            '<path d="M12 20.2S4.6 15.7 4.6 10.6A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7.4 2.6c0 5.1-7.4 9.6-7.4 9.6z"/>',
+        ),
+        'maintenance.php' => array(
+            '数据维护', '备份、恢复与清理',
+            '<ellipse cx="12" cy="6.2" rx="7.4" ry="2.9"/><path d="M4.6 6.2v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9V6.2"/><path d="M4.6 11.8v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9v-5.6"/>',
+        ),
+        'update.php'      => array(
+            '系统更新', '从 GitHub 装新版本',
+            '<path d="M7.3 17.5a4 4 0 0 1-.4-7.98 5.5 5.5 0 0 1 10.66-.7A3.7 3.7 0 0 1 17.8 17.5"/><path d="M12 11.2v6.2"/><path d="M9.7 15 12 17.3 14.3 15"/>',
+        ),
+        'settings.php'    => array(
+            '系统设置', '站点信息、统计口径与访问控制',
+            '<path d="M4 7.5h7M15.5 7.5h4.5M4 16.5h4M12.5 16.5h7.5"/><circle cx="13" cy="7.5" r="2.2"/><circle cx="10" cy="16.5" r="2.2"/>',
+        ),
     );
-    $ver  = ZAN_VERSION;
-    $hint = zan_update_hint();
+    $ver   = ZAN_VERSION;
+    $hint  = zan_update_hint();
+    $admin = zan_admin();
+    $who   = ($admin !== null && $admin['email'] !== '') ? $admin['email'] : '管理员';
+    $sub   = isset($items[$active][1]) ? $items[$active][1] : '';
     ?><!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1035,25 +1059,49 @@ function zan_admin_header($title, $active)
 <link rel="stylesheet" href="<?php echo zan_h(zan_url('assets/admin.css')); ?>?v=<?php echo zan_h($ver); ?>" />
 </head>
 <body class="za">
-<aside class="za-side">
-    <div class="za-brand"><?php echo zan_h(zan_site_name()); ?></div>
+<aside class="za-side" id="zaSide">
+    <div class="za-brand">
+        <span class="za-logo" aria-hidden="true">S</span>
+        <div class="za-brand-text">
+            <b><?php echo zan_h(zan_site_name()); ?></b>
+            <em><?php echo zan_h(ZAN_BRAND); ?> v<?php echo zan_h($ver); ?></em>
+        </div>
+    </div>
     <nav class="za-nav">
     <?php foreach ($items as $file => $meta) : ?>
-        <a href="<?php echo zan_h(zan_url('admin/' . $file)); ?>" class="<?php echo $active === $file ? 'is-active' : ''; ?>"<?php echo $file === 'update.php' ? ' data-nav="update"' : ''; ?>>
-            <span><?php echo zan_h($meta[0]); ?>
-                <?php if ($file === 'update.php' && $hint !== '') : ?><i class="za-dot" title="有新版本"></i><?php endif; ?>
-            </span>
-            <em><?php echo zan_h($meta[1]); ?></em>
+        <a href="<?php echo zan_h(zan_url('admin/' . $file)); ?>" class="<?php echo $active === $file ? 'is-active' : ''; ?>"<?php echo $file === 'update.php' ? ' data-nav="update"' : ''; ?> title="<?php echo zan_h($meta[1]); ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><?php echo $meta[2]; ?></svg>
+            <span><?php echo zan_h($meta[0]); ?></span>
+            <?php if ($file === 'update.php' && $hint !== '') : ?><i class="za-dot" title="有新版本"></i><?php endif; ?>
         </a>
     <?php endforeach; ?>
     </nav>
     <div class="za-side-foot">
-        <span><?php echo zan_h(ZAN_BRAND); ?> v<?php echo zan_h($ver); ?></span>
-        <a href="<?php echo zan_h(zan_url('admin/logout.php')); ?>">退出</a>
+        <div class="za-side-tip">
+            <b><?php echo zan_h(ZAN_TAGLINE); ?></b>
+            <span>点赞只在内容页，统计覆盖全站</span>
+        </div>
+        <a class="za-logout" href="<?php echo zan_h(zan_url('admin/logout.php')); ?>">退出登录</a>
     </div>
 </aside>
 <main class="za-main">
-    <header class="za-top"><h1><?php echo zan_h($title); ?></h1></header>
+    <header class="za-top">
+        <button class="za-menu-btn" type="button" aria-label="展开菜单"
+                onclick="document.getElementById('zaSide').classList.toggle('is-open')">☰</button>
+        <div class="za-heading">
+            <h1><?php echo zan_h($title); ?></h1>
+            <?php if ($sub !== '') : ?><div class="za-page-sub"><?php echo zan_h($sub); ?></div><?php endif; ?>
+        </div>
+        <div class="za-top-actions">
+            <?php if ($hint !== '') : ?>
+            <a class="za-top-ver" href="<?php echo zan_h(zan_url('admin/update.php')); ?>" title="有新版本，去系统更新查看">
+                发现新版本<?php echo $hint !== 'new' ? ' ' . zan_h($hint) : ''; ?>
+            </a>
+            <?php endif; ?>
+            <a class="za-top-link" href="<?php echo zan_h(zan_url('index.php')); ?>" target="_blank" rel="noopener">访问站点 ↗</a>
+            <span class="za-user" title="当前登录账号"><?php echo zan_h($who); ?></span>
+        </div>
+    </header>
     <div class="za-body">
     <?php
 }
@@ -1076,7 +1124,7 @@ function zan_admin_footer()
         body: body.toString()
     }).then(function (r) { return r.json(); }).then(function (d) {
         if (!d || !d.has_update) { return; }
-        var nav = document.querySelector('.za-nav a[data-nav="update"] span');
+        var nav = document.querySelector('.za-nav a[data-nav="update"]');
         if (nav && !nav.querySelector('.za-dot')) {
             var dot = document.createElement('i');
             dot.className = 'za-dot';
