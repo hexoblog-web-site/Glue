@@ -29,6 +29,16 @@
     --za-shadow: 0 1px 2px rgba(17, 24, 39, .03);
     --za-shadow-float: 0 10px 30px rgba(17, 24, 39, .12);
     --za-top-bg: rgba(242, 243, 245, .92);
+    /* 侧栏是一块深色浮岛，与内容区形成材质对比，所以单独一套变量 */
+    --za-side-bg: #17171B;
+    --za-side-text: #F4F4F5;
+    --za-side-muted: #A0A0AB;
+    --za-side-faint: #6B6B76;
+    --za-side-icon: #6B6B76;
+    --za-side-hover: rgba(255, 255, 255, .055);
+    --za-side-active: rgba(255, 255, 255, .075);
+    --za-side-line: rgba(255, 255, 255, .07);
+    --za-side-bar: #3B82F6;
 }
 
 /* 暗色：结构与浅色完全一致，只换变量，避免两套布局各写一遍 */
@@ -54,6 +64,15 @@
         --za-shadow: 0 1px 2px rgba(0, 0, 0, .32);
         --za-shadow-float: 0 10px 30px rgba(0, 0, 0, .52);
         --za-top-bg: rgba(20, 22, 26, .92);
+        --za-side-bg: #0F1013;
+        --za-side-text: #F1F3F7;
+        --za-side-muted: #9BA3AF;
+        --za-side-faint: #6E7683;
+        --za-side-icon: #6E7683;
+        --za-side-hover: rgba(255, 255, 255, .06);
+        --za-side-active: rgba(255, 255, 255, .085);
+        --za-side-line: rgba(255, 255, 255, .08);
+        --za-side-bar: #60A5FA;
     }
 }
 
@@ -61,8 +80,8 @@
 html, body { height: 100%; }
 body.za {
     margin: 0;
-    padding: 12px;
-    gap: 12px;
+    padding: 0;
+    gap: 0;
     background: var(--za-bg);
     color: var(--za-text);
     font: 13.5px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -85,91 +104,111 @@ code {
     word-break: break-all;
 }
 
-/* ---------- 侧栏：浮岛白卡 ---------- */
+/* ---------- 侧栏：深色贴边导航 ----------
+ * 贴左边缘、撑满视口、无圆角无阴影。跟右侧浅灰内容区形成材质对比，
+ * 是「导航条 + 内容」而不是「两张卡片并排」。 */
 .za-side {
-    width: 216px;
-    flex: 0 0 216px;
-    background: var(--za-panel);
-    border-radius: 20px;
-    box-shadow: var(--za-shadow);
+    width: 244px;
+    flex: 0 0 244px;
+    background: var(--za-side-bg);
     display: flex;
     flex-direction: column;
     position: sticky;
-    top: 12px;
-    height: calc(100vh - 24px);
+    top: 0;
+    height: 100vh;
+    padding: 18px 10px 14px;
     overflow: hidden;
 }
-.za-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px 14px; }
+.za-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 16px; }
 .za-logo {
-    width: 34px; height: 34px; border-radius: 11px; flex: 0 0 34px;
-    background: linear-gradient(140deg, #3B82F6, #1D4ED8);
-    color: #fff; font-weight: 700; font-size: 16px;
+    width: 28px; height: 28px; border-radius: 8px; flex: 0 0 28px;
+    background: linear-gradient(140deg, #5B8DEF, #2F6BFF);
+    color: #fff; font-weight: 600; font-size: 13px;
     display: flex; align-items: center; justify-content: center;
 }
 .za-brand-text { min-width: 0; }
 .za-brand-text b {
-    display: block; font-weight: 700; font-size: 14.5px; letter-spacing: -.2px;
+    display: block; font-weight: 600; font-size: 13.5px; letter-spacing: -.1px;
+    color: var(--za-side-text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .za-brand-text em {
-    display: block; font-style: normal; font-size: 11px; color: var(--za-faint);
+    display: block; font-style: normal; font-size: 11px; color: var(--za-side-faint);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.za-nav { padding: 2px 10px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
-/* 分组标题：11px 大写感的浅灰小字，和可点条目拉开层级 */
-.za-nav-title {
-    padding: 12px 11px 5px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .6px;
-    color: var(--za-faint);
-}
-.za-nav-title:first-child { padding-top: 4px; }
-.za-nav a {
+.za-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
+.za-nav::-webkit-scrollbar { width: 4px; }
+.za-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .1); border-radius: 4px; }
+
+/* 一级项：38px 行高，紧凑但不挤 */
+.za-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 11px; border-radius: 12px;
-    color: var(--za-muted); font-size: 13.5px;
+    width: 100%; height: 38px; padding: 0 10px;
+    border: 0; border-radius: 7px; background: none;
+    font-family: inherit; font-size: 13.5px; text-align: left;
+    color: var(--za-side-muted); cursor: pointer;
     transition: background .15s ease, color .15s ease;
 }
-.za-nav a svg {
-    width: 18px; height: 18px; flex: 0 0 18px;
-    stroke: currentColor; fill: none; stroke-width: 1.7;
-    stroke-linecap: round; stroke-linejoin: round;
-    color: var(--za-faint);
+.za-item svg { width: 17px; height: 17px; flex: 0 0 17px; fill: var(--za-side-icon); transition: fill .15s ease; }
+.za-item span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.za-item .za-arrow {
+    width: 14px; height: 14px; flex: 0 0 14px; margin-left: auto;
+    fill: var(--za-side-faint); transition: transform .2s ease, fill .15s ease;
 }
-.za-nav a span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.za-nav a:hover { background: var(--za-soft); color: var(--za-text); }
-.za-nav a:hover svg { color: var(--za-muted); }
-.za-nav a.is-active {
-    background: var(--za-accent-soft); color: var(--za-accent-strong); font-weight: 600;
+.za-group.is-open > .za-item .za-arrow { transform: rotate(180deg); }
+.za-item:hover { background: var(--za-side-hover); color: var(--za-side-text); }
+.za-item:hover svg { fill: var(--za-side-muted); }
+.za-group.is-open > .za-item > svg:first-child { fill: var(--za-side-muted); }
+/* 选中：淡白底 + 左 2.5px 竖条，靠位置而不只靠颜色 */
+.za-item.is-active {
+    background: var(--za-side-active); color: #fff; font-weight: 500;
+    position: relative;
 }
-.za-nav a.is-active svg { color: var(--za-accent); stroke-width: 2; }
+.za-item.is-active::before,
+.za-sub a.is-active::before {
+    content: ''; position: absolute; left: 0; top: 50%;
+    width: 2.5px; height: 16px; margin-top: -8px;
+    border-radius: 2px; background: var(--za-side-bar);
+}
+.za-item.is-active > svg:first-child { fill: #fff; }
+
+/* 红点贴着文字走，不参与箭头的 auto 定位 */
+.za-item .za-dot { margin-left: 0; }
 .za-dot {
-    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
-    background: #E5484D; margin-left: auto; flex: 0 0 7px;
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #F2555A; flex: 0 0 6px;
 }
 
-.za-side-foot { padding: 10px; }
-.za-side-tip {
-    background: var(--za-soft); border-radius: 12px;
-    padding: 10px 12px; margin-bottom: 8px; line-height: 1.5;
-}
-.za-side-tip b { display: block; font-size: 11.5px; color: var(--za-muted); font-weight: 500; }
-.za-side-tip span { display: block; font-size: 11.5px; color: var(--za-faint); }
-.za-logout {
-    display: block; text-align: center; padding: 8px;
-    border-radius: 999px; background: var(--za-soft);
-    color: var(--za-muted); font-size: 12.5px;
+/* 二级：左缩进 37px，正好对齐一级文字的左边缘 */
+.za-sub { max-height: 0; overflow: hidden; transition: max-height .22s cubic-bezier(.4, 0, .2, 1); }
+.za-group.is-open .za-sub { max-height: 200px; }
+.za-sub a {
+    display: flex; align-items: center;
+    height: 34px; padding: 0 10px 0 37px;
+    border-radius: 7px; font-size: 13px;
+    color: var(--za-side-muted);
     transition: background .15s ease, color .15s ease;
 }
-.za-logout:hover { background: var(--za-danger-soft); color: var(--za-danger); }
+.za-sub a:hover { background: var(--za-side-hover); color: var(--za-side-text); }
+.za-sub a.is-active {
+    background: var(--za-side-active); color: #fff; font-weight: 500;
+    position: relative;
+}
+
+.za-side-foot { margin-top: 10px; padding: 12px 4px 0; border-top: 1px solid var(--za-side-line); }
+.za-logout {
+    display: block; padding: 6px; border-radius: 6px;
+    font-size: 12.5px; color: var(--za-side-faint);
+    transition: background .15s ease, color .15s ease;
+}
+.za-logout:hover { background: rgba(248, 113, 113, .12); color: #FCA5A5; }
 
 /* ---------- 主体 ---------- */
-.za-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.za-main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 34px 32px; }
 .za-top {
     display: flex; align-items: center; gap: 14px;
-    padding: 6px 0 16px;
+    padding: 24px 0 18px;
     position: sticky; top: 0; z-index: 20;
     background: var(--za-top-bg);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -517,13 +556,14 @@ body.za-login { display: block; }
 /* ---------- 响应式 ---------- */
 @media (max-width: 900px) {
     body.za { padding: 10px; }
+    .za-main { padding: 0; }
     .za-side {
-        position: fixed; left: -232px; top: 10px; z-index: 60;
-        height: calc(100vh - 20px);
+        position: fixed; left: -264px; top: 0; z-index: 60;
+        height: 100vh;
         transition: left .2s ease;
-        box-shadow: var(--za-shadow-float);
+        box-shadow: 0 0 40px rgba(0, 0, 0, .28);
     }
-    .za-side.is-open { left: 10px; }
+    .za-side.is-open { left: 0; }
     .za-menu-btn { display: inline-block; }
     .za-top h1 { font-size: 21px; }
     .za-grid2 { grid-template-columns: 1fr; }

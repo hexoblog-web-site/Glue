@@ -1147,42 +1147,36 @@ function zan_update_auto_due()
 
 function zan_admin_header($title, $active)
 {
-    /* 侧栏菜单：文件名 => array(名称, 一句话说明, 内联图标)
-     * 图标统一 24 视图框、线性描边，尺寸与颜色交给 CSS（.za-nav svg）。 */
+    /* 页面清单：文件名 => array(名称, 一句话说明)
+     * 名称用于侧栏二级项与页面标题，说明用于顶栏副标题；
+     * 一级项和分组图标不在这里，见下面的 $groups。 */
     $items = array(
-        'index.php'       => array(
-            '仪表盘', '今天的点赞与浏览',
-            '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
-        ),
-        'list.php'        => array(
-            '点赞统计', '每篇文章收到多少赞',
-            '<path d="M12 20.2S4.6 15.7 4.6 10.6A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7.4 2.6c0 5.1-7.4 9.6-7.4 9.6z"/>',
-        ),
-        'stats.php'       => array(
-            '网站统计', '访问趋势、来源与访客',
-            '<path d="M4.5 19.5V12M9.8 19.5V6M15.1 19.5v-5M20.4 19.5V9"/><path d="M3 19.5h18"/>',
-        ),
-        'maintenance.php' => array(
-            '数据备份', '备份、恢复与清理',
-            '<ellipse cx="12" cy="6.2" rx="7.4" ry="2.9"/><path d="M4.6 6.2v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9V6.2"/><path d="M4.6 11.8v5.6c0 1.6 3.3 2.9 7.4 2.9s7.4-1.3 7.4-2.9v-5.6"/>',
-        ),
-        'settings.php'    => array(
-            '系统设置', '站点信息、统计口径与访问控制',
-            '<path d="M4 7.5h7M15.5 7.5h4.5M4 16.5h4M12.5 16.5h7.5"/><circle cx="13" cy="7.5" r="2.2"/><circle cx="10" cy="16.5" r="2.2"/>',
-        ),
-        'update.php'      => array(
-            '系统更新', '从 GitHub 装新版本',
-            '<path d="M7.3 17.5a4 4 0 0 1-.4-7.98 5.5 5.5 0 0 1 10.66-.7A3.7 3.7 0 0 1 17.8 17.5"/><path d="M12 11.2v6.2"/><path d="M9.7 15 12 17.3 14.3 15"/>',
-        ),
+        'index.php'       => array('仪表盘', '今天的点赞与浏览'),
+        'list.php'        => array('点赞统计', '每篇文章收到多少赞'),
+        'stats.php'       => array('网站统计', '访问趋势、来源与访客'),
+        'maintenance.php' => array('数据备份', '备份、恢复与清理'),
+        'settings.php'    => array('系统设置', '站点信息、统计口径与访问控制'),
+        'update.php'      => array('系统更新', '从 GitHub 装新版本'),
     );
 
-    /* 分区：看数据 → 管数据 → 管系统。菜单少时分组反而碍眼，
-     * 超过 4 项就值得分段，眼睛找得更快。 */
+    /* 导航：仪表盘单列，其余按「数据 / 系统」两组折叠。
+     * 组定义是 键 => array(组名, 组图标, 组内文件)，顺序即渲染顺序。
+     * 图标用实心填充（fill 由 CSS 控制），比细线条在小尺寸下更压得住。 */
     $groups = array(
-        '概览' => array('index.php'),
-        '数据' => array('list.php', 'stats.php', 'maintenance.php'),
-        '系统' => array('settings.php', 'update.php'),
+        'data' => array(
+            '数据',
+            '<path d="M12 20.6c-.3 0-.6-.1-.8-.3C8.6 18.1 2.8 13.6 2.8 9.3 2.8 6.4 5 4 7.9 4c1.7 0 3.2.9 4.1 2.3C12.9 4.9 14.4 4 16.1 4c2.9 0 5.1 2.4 5.1 5.3 0 4.3-5.8 8.8-8.4 11-.2.2-.5.3-.8.3z"/>',
+            array('list.php', 'stats.php', 'maintenance.php'),
+        ),
+        'sys'  => array(
+            '系统',
+            '<path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
+            array('settings.php', 'update.php'),
+        ),
     );
+    /* 仪表盘图标（首页）与折叠箭头，两个都只有一处用，放局部变量即可 */
+    $icoHome  = '<path d="M11.4 3.2a1 1 0 0 1 1.2 0l8 6a1 1 0 0 1 .4.8V20a1 1 0 0 1-1 1h-5.2v-5.6H9.2V21H4a1 1 0 0 1-1-1V10a1 1 0 0 1 .4-.8z"/>';
+    $icoArrow = '<path d="M7.4 9.4a1.1 1.1 0 0 1 1.6 0L12 12.5l3-3.1a1.1 1.1 0 1 1 1.6 1.5l-3.8 3.9a1.1 1.1 0 0 1-1.6 0L7.4 10.9a1.1 1.1 0 0 1 0-1.5z"/>';
 
     $ver   = ZAN_VERSION;
     $hint  = zan_update_hint();
@@ -1204,30 +1198,66 @@ function zan_admin_header($title, $active)
         <span class="za-logo" aria-hidden="true">S</span>
         <div class="za-brand-text">
             <b><?php echo zan_h(zan_site_name()); ?></b>
-            <em><?php echo zan_h(ZAN_BRAND); ?> v<?php echo zan_h($ver); ?></em>
+            <em>v<?php echo zan_h($ver); ?></em>
         </div>
     </div>
     <nav class="za-nav">
-    <?php foreach ($groups as $groupTitle => $files) : ?>
-        <div class="za-nav-title"><?php echo zan_h($groupTitle); ?></div>
-        <?php foreach ($files as $file) : ?>
-            <?php if (!isset($items[$file])) { continue; } $meta = $items[$file]; ?>
-        <a href="<?php echo zan_h(zan_url('admin/' . $file)); ?>" class="<?php echo $active === $file ? 'is-active' : ''; ?>"<?php echo $file === 'update.php' ? ' data-nav="update"' : ''; ?> title="<?php echo zan_h($meta[1]); ?>">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><?php echo $meta[2]; ?></svg>
-            <span><?php echo zan_h($meta[0]); ?></span>
-            <?php if ($file === 'update.php' && $hint !== '') : ?><i class="za-dot" title="有新版本"></i><?php endif; ?>
+        <a class="za-item<?php echo $active === 'index.php' ? ' is-active' : ''; ?>"
+           href="<?php echo zan_h(zan_url('admin/index.php')); ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><?php echo $icoHome; ?></svg>
+            <span>仪表盘</span>
         </a>
-        <?php endforeach; ?>
+    <?php foreach ($groups as $gkey => $g) :
+        $isOpen  = in_array($active, $g[2], true);
+        $hasDot  = ($gkey === 'sys' && $hint !== '');
+        ?>
+        <div class="za-group<?php echo $isOpen ? ' is-open' : ''; ?>" data-group="<?php echo zan_h($gkey); ?>">
+            <button class="za-item za-item-toggle" type="button"
+                    aria-expanded="<?php echo $isOpen ? 'true' : 'false'; ?>">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><?php echo $g[1]; ?></svg>
+                <span><?php echo zan_h($g[0]); ?></span>
+                <?php if ($hasDot) : ?><i class="za-dot" title="有新版本"></i><?php endif; ?>
+                <svg class="za-arrow" viewBox="0 0 24 24" aria-hidden="true"><?php echo $icoArrow; ?></svg>
+            </button>
+            <div class="za-sub"><div>
+            <?php foreach ($g[2] as $file) : ?>
+                <?php if (!isset($items[$file])) { continue; } ?>
+                <a href="<?php echo zan_h(zan_url('admin/' . $file)); ?>"
+                   class="<?php echo $active === $file ? 'is-active' : ''; ?>"><?php echo zan_h($items[$file][0]); ?></a>
+            <?php endforeach; ?>
+            </div></div>
+        </div>
     <?php endforeach; ?>
     </nav>
     <div class="za-side-foot">
-        <div class="za-side-tip">
-            <b><?php echo zan_h(ZAN_TAGLINE); ?></b>
-            <span>内容页点赞 · 全站统计</span>
-        </div>
         <a class="za-logout" href="<?php echo zan_h(zan_url('admin/logout.php?nonce=' . zan_csrf())); ?>">退出登录</a>
     </div>
 </aside>
+<script>
+(function () {
+    var side = document.getElementById('zaSide');
+    if (!side) { return; }
+    var groups = [].slice.call(side.querySelectorAll('.za-group'));
+    var KEY = 'zan_nav_open', saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    groups.forEach(function (g) {
+        var k = g.getAttribute('data-group');
+        if (saved && typeof saved[k] === 'boolean' && !g.querySelector('.za-sub a.is-active')) {
+            g.classList.toggle('is-open', saved[k]);
+        }
+        var btn = g.querySelector('.za-item-toggle');
+        if (!btn) { return; }
+        btn.setAttribute('aria-expanded', g.classList.contains('is-open') ? 'true' : 'false');
+        btn.addEventListener('click', function () {
+            g.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', g.classList.contains('is-open') ? 'true' : 'false');
+            var st = {};
+            groups.forEach(function (x) { st[x.getAttribute('data-group')] = x.classList.contains('is-open'); });
+            try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {}
+        });
+    });
+})();
+</script>
 <main class="za-main">
     <header class="za-top">
         <button class="za-menu-btn" type="button" aria-label="展开菜单"
