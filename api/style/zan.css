@@ -1,0 +1,154 @@
+/*!
+ * zan.css 2.0.0 - Sugar-Box 点赞组件内置样式
+ * 所有规则都以 [data-zan] 为作用域，不写任何裸标签选择器，不使用 !important
+ */
+
+[data-zan] {
+  --zan-color: #e0245e;
+  --zan-size: 14px;
+  --zan-gap: 6px;
+  --zan-radius: 999px;
+  --zan-speed: .28s;
+}
+
+[data-zan] .zan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--zan-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--zan-size);
+  line-height: 1.25;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--zan-radius);
+  opacity: .76;
+  transition: opacity .18s ease, color .18s ease, background-color .18s ease;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+[data-zan] .zan-btn:hover {
+  opacity: 1;
+  color: var(--zan-color);
+}
+
+/* 只读容器：首页卡片、归档、侧栏里别的文章，只显示数字，不响应点击 */
+[data-zan].is-zan-read .zan-btn {
+  cursor: default;
+  opacity: .6;
+}
+
+[data-zan].is-zan-read .zan-btn:hover {
+  opacity: .6;
+  color: inherit;
+}
+
+[data-zan] .zan-btn:focus-visible {
+  outline: 2px solid var(--zan-color);
+  outline-offset: 2px;
+}
+
+[data-zan] .zan-icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: center;
+}
+
+[data-zan] .zan-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+
+[data-zan] .zan-label {
+  white-space: nowrap;
+}
+
+[data-zan].is-liked .zan-btn {
+  opacity: 1;
+  color: var(--zan-color);
+}
+
+[data-zan].is-liked .zan-icon {
+  fill: currentColor;
+}
+
+[data-zan].is-pop .zan-icon {
+  animation: zan-pop .32s ease;
+}
+
+[data-zan].is-loading {
+  pointer-events: none;
+}
+
+[data-zan].is-loading .zan-btn {
+  opacity: .45;
+}
+
+[data-zan].is-error .zan-btn {
+  color: #c0392b;
+}
+
+[data-zan][data-zan-variant="pill"] .zan-btn {
+  padding: .34em .82em;
+  border: 1px solid currentColor;
+  opacity: .82;
+}
+
+[data-zan][data-zan-variant="pill"] .zan-btn:hover,
+[data-zan][data-zan-variant="pill"].is-liked .zan-btn {
+  background: var(--zan-color);
+  border-color: var(--zan-color);
+  color: #fff;
+  opacity: 1;
+}
+
+[data-zan][data-zan-variant="mini"] {
+  --zan-size: 13px;
+  --zan-gap: 4px;
+}
+
+[data-zan][data-zan-variant="mini"] .zan-count {
+  font-size: .92em;
+  opacity: .85;
+}
+
+/* 阅读数：容器内由脚本填两个 span，站长不用管 */
+[data-zan-view] {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+[data-zan-view] .zan-view-count {
+  letter-spacing: .01em;
+}
+
+[data-zan-view] .zan-view-label {
+  margin-left: .32em;
+  opacity: .72;
+}
+
+@keyframes zan-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-zan] .zan-btn {
+    transition: none;
+  }
+  [data-zan].is-pop .zan-icon {
+    animation: none;
+  }
+}
