@@ -79,7 +79,12 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+/* 只锁 html 的高度，body 用 min-height 跟着内容长。
+ * 以前两个都写 height:100%，body 被钉死在视口高度，内容溢出到盒子外面；
+ * 侧栏是 sticky，它的活动范围就是 body 这块盒子，于是滚过 100vh 后
+ * 侧栏跟着页面一起上去，下面留出一片空白。 */
+html { height: 100%; }
+body { min-height: 100%; }
 body.za {
     margin: 0;
     padding: 0;
