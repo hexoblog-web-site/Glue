@@ -9,7 +9,7 @@ if (!defined('ZAN_APP')) {
 }
 
 if (!defined('ZAN_VERSION')) {
-    define('ZAN_VERSION', '2.0.0');
+    define('ZAN_VERSION', '2.0.1');
 }
 if (!defined('ZAN_BRAND')) {
     define('ZAN_BRAND', 'Sugar-Box');

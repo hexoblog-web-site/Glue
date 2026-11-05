@@ -832,19 +832,28 @@ function zan_has_view_table(PDO $pdo)
  * 接口输出
  * ------------------------------------------------------------------------- */
 
-function zan_cors()
+/**
+ * 跨域头。
+ *
+ * $public = true 用于只读接口（query / site）：返回的只有公开计数，不带 Cookie、
+ * 不含访客信息，任何站点读都一样，所以直接给 *。这样博客换域名、本地预览、
+ * 或者后台白名单漏配，页面上那几个数字都不会因为 CORS 读不回来而消失。
+ *
+ * 写接口（like / pageview）仍走白名单：被拦下时浏览器只是读不到响应，
+ * 请求本身照样送达，计数不受影响；但能挡住别的站点在你的访客浏览器里悄悄伪造点赞
+ * 并读到结果。
+ */
+function zan_cors($public = false)
 {
     $origin  = isset($_SERVER['HTTP_ORIGIN']) ? (string) $_SERVER['HTTP_ORIGIN'] : '';
     $allowed = (array) zan_cfg('allowed_origins', array());
     $allowed = array_values(array_filter(array_map('trim', $allowed)));
 
-    if ($origin !== '') {
-        if (!$allowed || in_array($origin, $allowed, true)) {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Vary: Origin');
-        }
-    } else {
+    if ($public || $origin === '') {
         header('Access-Control-Allow-Origin: *');
+    } elseif (!$allowed || in_array($origin, $allowed, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
     }
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');

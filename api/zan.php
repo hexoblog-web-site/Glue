@@ -21,9 +21,13 @@ define('ZAN_APP', true);
 require dirname(__DIR__) . '/include/common.php';
 require_once dirname(__DIR__) . '/include/schema.php';
 
-zan_cors();
-
 $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
+$action = isset($_REQUEST['action']) ? (string) $_REQUEST['action'] : ($method === 'POST' ? 'like' : 'query');
+
+/* 只读接口（query / site）返回的只是公开计数，直接放开 *，不怕白名单漏配；
+   写接口仍只认白名单，挡住别的站点伪造点赞并读结果。 */
+zan_cors(in_array($action, array('query', 'site'), true));
+
 if ($method === 'OPTIONS') {
     http_response_code(204);
     exit;
@@ -40,8 +44,6 @@ try {
 }
 
 zan_stats_bootstrap($pdo);
-
-$action = isset($_REQUEST['action']) ? (string) $_REQUEST['action'] : ($method === 'POST' ? 'like' : 'query');
 
 /** 把前端传来的 url / key / path 归一化成页面路径与查询串 */
 function zan_api_target()

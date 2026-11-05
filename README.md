@@ -38,7 +38,7 @@
 装完打开后端根地址会看到一行 JSON：
 
 ```json
-{"code":0,"message":"Sugar-Box 运行正常：点赞只在内容页生效，统计覆盖全站","version":"2.0.0"}
+{"code":0,"message":"Sugar-Box 运行正常：点赞只在内容页生效，统计覆盖全站","version":"2.0.1"}
 ```
 
 `?format=html` 是可视化状态页；后台在 `admin/login.php`。
