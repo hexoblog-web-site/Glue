@@ -39,6 +39,7 @@
     --za-side-active: rgba(255, 255, 255, .075);
     --za-side-line: rgba(255, 255, 255, .07);
     --za-side-bar: #3B82F6;
+    --za-side-edge: transparent;
 }
 
 /* 暗色：结构与浅色完全一致，只换变量，避免两套布局各写一遍 */
@@ -64,15 +65,16 @@
         --za-shadow: 0 1px 2px rgba(0, 0, 0, .32);
         --za-shadow-float: 0 10px 30px rgba(0, 0, 0, .52);
         --za-top-bg: rgba(20, 22, 26, .92);
-        --za-side-bg: #0F1013;
+        --za-side-bg: #0C0E11;
         --za-side-text: #F1F3F7;
         --za-side-muted: #9BA3AF;
         --za-side-faint: #6E7683;
         --za-side-icon: #6E7683;
         --za-side-hover: rgba(255, 255, 255, .06);
-        --za-side-active: rgba(255, 255, 255, .085);
+        --za-side-active: rgba(255, 255, 255, .105);
         --za-side-line: rgba(255, 255, 255, .08);
         --za-side-bar: #60A5FA;
+        --za-side-edge: rgba(255, 255, 255, .07);
     }
 }
 
@@ -118,6 +120,7 @@ code {
     height: 100vh;
     padding: 18px 10px 14px;
     overflow: hidden;
+    border-right: 1px solid var(--za-side-edge);
 }
 .za-brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 16px; }
 .za-logo {
