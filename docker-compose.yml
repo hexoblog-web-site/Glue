@@ -1,16 +1,21 @@
 # Sugar-Box 3.0 · 点赞服务
 #
-#   cp .env.example .env && vi .env      # 填一个数据库密码
+#   最快：sh install.sh                       （自动生成密码、拉镜像、起容器）
+#
+#   手动：
+#   cp .env.example .env && vi .env           # 至少填一个 DB_PASS
+#   docker compose pull || docker compose build
 #   docker compose up -d
 #
 # 打开 http://服务器IP:8080/ 看到「运行正常」即可用。
 
 services:
   zan:
+    # 有官方镜像就直接拉；拉不到会自动回退成本地构建（见下方 build）
+    image: ghcr.io/hexoblog-web-site/glue:${ZAN_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
-    image: sugar-box:3.0.0
     container_name: zan
     restart: unless-stopped
     ports:

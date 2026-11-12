@@ -12,11 +12,33 @@ PHP + MySQL，只做点赞。**不记录任何浏览、访客、来源、地区�
 
 ---
 
-## 一条命令跑起来
+## 安装
+
+### 方式一：一行命令（和 twikoo 一样）
 
 ```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/hexoblog-web-site/Glue/main/install.sh)"
+```
+
+一行里做完：检查 Docker → 拉代码 → **自动生成数据库密码和后台密码**（你不用改任何文件）→ 拉官方镜像 → 起容器 → 等健康检查 → 打印后台地址与账号。
+
+装完在 `/opt/glue`（非 root 用户是 `~/glue`），凭据写在同目录的 `CREDENTIALS.txt`（600 权限）。
+
+可选参数（都是环境变量）：
+
+```bash
+ZAN_PORT=127.0.0.1:8090 sh install.sh    # 前面有反代时只监听本机
+ZAN_DIR=/srv/glue        sh install.sh    # 换安装目录
+```
+
+### 方式二：docker compose
+
+```bash
+git clone https://github.com/hexoblog-web-site/Glue.git
+cd Glue
 cp .env.example .env
-vi .env                     # 至少填一个 DB_PASS
+vi .env                     # 只需要填一个 DB_PASS
+docker compose pull || docker compose build
 docker compose up -d
 ```
 
@@ -29,7 +51,9 @@ docker compose logs zan | grep 管理员
 
 > 如果你前面有 Nginx / 宝塔反代，把 `.env` 里的 `ZAN_PORT` 改成 `127.0.0.1:8080` 只监听本机，再反代到域名。
 
-### 用现成镜像（不自己构建）
+### 方式三：docker run（复用已有的 MySQL）
+
+镜像已发布在 GitHub Container Registry，不需要自己构建：
 
 ```bash
 docker run -d --name zan \
@@ -38,10 +62,11 @@ docker run -d --name zan \
   -e DB_NAME=zan -e DB_USER=zan -e DB_PASS=数据库密码 \
   -e ADMIN_EMAIL=you@example.com -e ADMIN_PASSWORD=你的后台密码 \
   -v zan_data:/data \
-  sugar-box:3.0.0
+  ghcr.io/hexoblog-web-site/glue:latest
 ```
 
-数据库可以复用现有的 MySQL（本程序的 compose 自带一个 `mysql:5.7`）。
+数据库可以复用现有的 MySQL（本程序的 compose 自带一个 `mysql:5.7`，不用另装）。
+
 
 ---
 
