@@ -166,7 +166,6 @@ switch ($step) {
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
         $base  = ($https ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $root;
         $snippet = '<div data-zan data-zan-scope="content"></div>' . "\n"
-            . '<span data-zan-view></span>' . "\n"
             . '<script src="' . $base . '/api/js/zan.js" data-server="' . $base . '" defer></script>';
 
         zan_install_header(ZAN_BRAND . ' › 安装完成');

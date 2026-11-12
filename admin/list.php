@@ -7,7 +7,6 @@ require dirname(__DIR__) . '/include/common.php';
 require_once dirname(__DIR__) . '/include/schema.php';
 zan_require_admin();
 $pdo = zan_db_or_die();
-zan_stats_bootstrap($pdo);
 
 $notice = '';
 
@@ -23,25 +22,15 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' &
         $del = $pdo->prepare('DELETE FROM ' . zan_table('log') . ' WHERE `page_key` = ?');
         $del->execute(array($key));
         $removed = $del->rowCount();
-        $removedViews = 0;
-        if (zan_stats_ready()) {
-            $dv = $pdo->prepare('DELETE FROM ' . zan_table('event') . ' WHERE `url_path` = ?');
-            $dv->execute(array($key));
-            $removedViews = $dv->rowCount();
-        }
         $pdo->prepare('DELETE FROM ' . zan_table('page') . ' WHERE `page_key` = ?')->execute(array($key));
         $pdo->commit();
-        header('Location: ' . zan_url('admin/list.php?done=' . $removed . '&views=' . $removedViews));
+        header('Location: ' . zan_url('admin/list.php?done=' . $removed));
         exit;
     }
 }
 
 if (isset($_GET['done'])) {
-    $msg = '已删除该页面的 ' . (int) $_GET['done'] . ' 条点赞记录';
-    if (isset($_GET['views']) && (int) $_GET['views'] > 0) {
-        $msg .= '、' . (int) $_GET['views'] . ' 条浏览记录';
-    }
-    $notice = array($msg . '。', 'ok');
+    $notice = array('已删除该页面的 ' . (int) $_GET['done'] . ' 条点赞记录。', 'ok');
 }
 
 $q       = trim(zan_get_str('q'));
@@ -49,7 +38,7 @@ $detail  = zan_norm_key(zan_get_str('key'));
 $pageNo  = max(1, (int) zan_get_str('p', '1'));
 $perPage = 20;
 
-zan_admin_header($detail !== '' ? '页面记录' : '点赞统计', 'list.php');
+zan_admin_header($detail !== '' ? '页面记录' : '点赞排行', 'list.php');
 
 /* ---------------------------------------------------------------- 单页详情 */
 if ($detail !== '') {
@@ -61,11 +50,6 @@ if ($detail !== '') {
     $cnt = $pdo->prepare('SELECT COUNT(*) FROM ' . zan_table('log') . ' WHERE `page_key` = ?');
     $cnt->execute(array($detail));
     $likes = (int) $cnt->fetchColumn();
-
-    $stat = zan_page_stats($pdo, $detail);
-    $views    = $stat['pv'];
-    $visitors = $stat['uv'];
-    $visits   = $stat['visits'];
 
     $logs = $pdo->prepare('SELECT `visitor_hash`, `created_at` FROM ' . zan_table('log')
         . ' WHERE `page_key` = ? ORDER BY `id` DESC LIMIT 200');
@@ -80,13 +64,11 @@ if ($detail !== '') {
     <div class="za-card">
         <div class="za-card-head">
             <h2><?php echo zan_h($page && $page['title'] !== '' ? $page['title'] : $detail); ?></h2>
-            <span class="za-pill"><?php echo $views; ?> 浏览 · <?php echo $visitors; ?> 访客 · <?php echo $likes; ?> 赞</span>
+            <span class="za-pill"><?php echo $likes; ?> 赞</span>
         </div>
         <table class="za-kv">
-            <tr><th>浏览 / 访客 / 赞</th><td><?php echo $views; ?> / <?php echo $visitors; ?> / <?php echo $likes; ?></td></tr>
-            <tr><th>访问次数</th><td><?php echo $visits; ?></td></tr>
             <tr><th>页面标识</th><td><code><?php echo zan_h($detail); ?></code></td></tr>
-            <tr><th>首次记录</th><td><?php echo $page ? zan_h($page['created_at']) : '—'; ?></td></tr>
+            <tr><th>首次点赞</th><td><?php echo $page ? zan_h($page['created_at']) : '—'; ?></td></tr>
             <tr><th>最近点赞</th><td><?php echo $page ? zan_h($page['updated_at']) : '—'; ?></td></tr>
         </table>
     </div>
@@ -112,7 +94,7 @@ if ($detail !== '') {
 
     <div class="za-card is-danger">
         <div class="za-card-head"><h2>删除这个页面的数据</h2></div>
-        <p class="za-desc">会删掉 <?php echo $likes; ?> 条点赞记录、<?php echo $views; ?> 条浏览记录和这个页面的标题，不可恢复。建议先备份。</p>
+        <p class="za-desc">会删掉 <?php echo $likes; ?> 条点赞记录和这个页面的标题，不可恢复。建议先备份。</p>
         <form method="post" action="<?php echo zan_h(zan_url('admin/list.php')); ?>"
               onsubmit="return confirm('确定删除这个页面的全部点赞记录？');">
             <?php echo zan_csrf_field(); ?>
@@ -146,12 +128,10 @@ $rank = zan_page_rank_cols('p');
 
 $sql = 'SELECT p.`page_key`, p.`title`,'
     . ' ' . $rank['likes'] . ' AS likes,'
-    . ' ' . $rank['views'] . ' AS views,'
-    . ' ' . $rank['visitors'] . ' AS visitors,'
     . ' ' . $rank['last_at'] . ' AS last_at'
     . ' FROM ' . zan_table('page') . ' p'
     . ($where !== '' ? str_replace(array('`page_key`', '`title`'), array('p.`page_key`', 'p.`title`'), $where) : '')
-    . ' ORDER BY views DESC, likes DESC, p.`updated_at` DESC LIMIT ' . $perPage . ' OFFSET ' . $offset;
+    . ' ORDER BY likes DESC, p.`updated_at` DESC LIMIT ' . $perPage . ' OFFSET ' . $offset;
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
@@ -170,10 +150,10 @@ if ($notice) {
 
 <div class="za-card">
     <?php if (!$rows) : ?>
-        <p class="za-empty">没有匹配的页面。有人打开文章后这里才会有数据。</p>
+        <p class="za-empty">没有匹配的页面。有人点赞后这里才会有数据。</p>
     <?php else : ?>
     <table class="za-table">
-        <thead><tr><th>页面</th><th class="num">浏览</th><th class="num">访客</th><th class="num">赞</th><th class="num">最近</th></tr></thead>
+        <thead><tr><th>页面</th><th class="num">赞</th><th class="num">最近</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $row) : ?>
             <tr>
@@ -185,8 +165,6 @@ if ($notice) {
                         <em class="za-sub"><?php echo zan_h($row['page_key']); ?></em>
                     <?php endif; ?>
                 </td>
-                <td class="num"><?php echo (int) $row['views']; ?></td>
-                <td class="num"><?php echo (int) $row['visitors']; ?></td>
                 <td class="num"><?php echo (int) $row['likes']; ?></td>
                 <td class="num za-sub"><?php echo $row['last_at'] ? zan_h(substr($row['last_at'], 0, 16)) : '—'; ?></td>
             </tr>

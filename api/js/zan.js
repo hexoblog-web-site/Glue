@@ -1,35 +1,25 @@
 /*!
- * zan.js 2.0.6 - Sugar-Box：点赞 + 网站统计（内置样式版）
+ * zan.js 3.0.0 - Sugar-Box：纯点赞版（内置样式）
  * 接入：<script src="https://你的域名/api/js/zan.js" data-server="https://你的域名" defer></script>
  * 点赞：<div data-zan data-zan-scope="content"></div>（内容页专用；列表页请勿加 scope）
- * 阅读：<span data-zan-view></span>（显示这一页的浏览次数）
- *        <span data-zan-view data-zan-scope="site"></span>（显示全站累计）
+ * 只读：<div data-zan></div>（不带 scope 的容器只显示数字，点不动）
  *
- * 2.0.6
- *   - 上报完浏览后广播 zan:pageview 事件（带写入后的 pv / uv 与路径），
- *     让页面自带的阅读数能取到「含本次」的准数，不必刷新才 +1
- *
- * 2.0.5
- *   - 点赞响应被浏览器拦下时（跨域白名单没配对），用只读接口复核数字，
- *     不再把「已经写进数据库」的点赞误报成网络错误
- *
- * 2.0.2
- *   - 统计不再由容器触发：脚本一加载就给当前页记一条浏览，首页 / 归档 / 标签页都算
- *   - 写入模型照 Umami：每次浏览一条事件，访客 / 访问次数由服务端按 session / visit 推导
- *   - 点赞仍然只允许内容页：容器 key 必须等于当前页路径，其余页面只读数字
- *   - 去掉 data-zan-scope="any"（会破坏「只在内容页点赞」这条规则）
+ * 3.0.0
+ *   - 移除网站统计：不再上报浏览、不再渲染阅读数，只保留点赞
+ *   - 接口只剩 query / like 两个动作，脚本体积与请求量都更小
+ *   - window.Zan 不再暴露 pageview()
  *
  * 属性
- *   脚本：data-server / data-site / data-once="false" / data-stats="off"
+ *   脚本：data-server / data-site / data-once="false" / data-css="off"
  *         data-scope="read" 整站只读（点赞按钮全部禁用）
- *   点赞：data-zan / data-zan-key / data-zan-variant / data-zan-size / data-zan-color
+ *   容器：data-zan / data-zan-key / data-zan-variant / data-zan-size / data-zan-color
  *         data-zan-once="false" / data-zan-read / data-zan-scope="content"
- *   阅读：data-zan-view / data-zan-key / data-zan-label / data-zan-scope="site"
+ *         data-zan-label="点赞"（pill 形态下的文案）
  */
 (function () {
   'use strict';
 
-  var VERSION = '2.0.6';
+  var VERSION = '3.0.0';
 
   var script = document.currentScript || (function () {
     var all = document.querySelectorAll('script[src*="zan.js"]');
@@ -51,8 +41,6 @@
   var ONCE = DS.once !== 'false';
   /* 整站只读（脚本上的 data-scope="read"），容器级属性优先于它 */
   var SCRIPT_SCOPE = DS.scope || '';
-  /* 统计开关：data-stats="off" 只关统计，不影响点赞 */
-  var STATS_ON = DS.stats !== 'off';
 
   var LS_VID = 'zan:vid';
   var LS_LIKED = 'zan:liked';
@@ -81,7 +69,7 @@
     }
   }
 
-  /* 点赞用的访客标识：只有点赞需要「一个人只能点一次」，统计不用它 */
+  /* 点赞用的访客标识：一个人一篇只能点一次，靠它来去重 */
   function vid() {
     var s = store(LS_VID);
     if (s) return s;
@@ -154,8 +142,10 @@
     if (writable) btn.type = 'button';
     btn.className = 'zan-btn';
     if (writable) btn.setAttribute('aria-pressed', 'false');
+    var label = el.getAttribute('data-zan-label');
+    if (label === null) label = variant === 'pill' ? '点赞' : '';
     btn.innerHTML = ICON
-      + (variant === 'pill' ? '<span class="zan-label">点赞</span>' : '')
+      + (label !== '' ? '<span class="zan-label">' + label + '</span>' : '')
       + '<span class="zan-count" data-zan-count>0</span>';
     el.className = el.className ? el.className + ' zan' : 'zan';
     el.appendChild(btn);
@@ -245,7 +235,8 @@
       + '&key=' + encodeURIComponent(key)
       + '&path=' + encodeURIComponent(PAGE_KEY)
       + (force ? '&scope=content' : '')
-      + '&vid=' + encodeURIComponent(vid());
+      + '&vid=' + encodeURIComponent(vid())
+      + '&title=' + encodeURIComponent(document.title || '');
     return fetch(SERVER + '/api/zan.php', {
       method: 'POST',
       credentials: 'omit',
@@ -338,163 +329,6 @@
     document.head.appendChild(link);
   }
 
-  /* ---------------------------------------------------------------- 阅读数 */
-
-  var pageEls = [];   /* 当前页自己的容器 */
-  var otherEls = {};  /* 指向别页的容器：只查询，不写 */
-  var siteEls = [];   /* 全站计数器 */
-  var lastSent = '';
-
-  function renderView(el, label) {
-    if (!isEmpty(el)) return;
-    var n = document.createElement('span');
-    n.className = 'zan-view-count';
-    n.textContent = '0';
-    el.appendChild(n);
-    if (label !== '') {
-      var s = document.createElement('span');
-      s.className = 'zan-view-label';
-      s.textContent = label;
-      el.appendChild(s);
-    }
-    el.className = el.className ? el.className + ' zan-views' : 'zan-views';
-  }
-
-  function paintViews(items, views) {
-    for (var i = 0; i < items.length; i++) {
-      var n = items[i].querySelector('.zan-view-count');
-      if (n) n.textContent = String(views);
-    }
-  }
-
-  function collectViews() {
-    var list = document.querySelectorAll('[data-zan-view]');
-    for (var i = 0; i < list.length; i++) {
-      var el = list[i];
-      if (el.getAttribute('data-zan-viewed')) continue;
-      el.setAttribute('data-zan-viewed', '1');
-
-      var scope = el.getAttribute('data-zan-scope') || '';
-      var label = el.getAttribute('data-zan-label');
-      if (label === null) label = scope === 'site' ? '浏览' : '次浏览';
-      renderView(el, label);
-
-      if (scope === 'site') {
-        siteEls.push(el);
-        continue;
-      }
-      var key = normKey(el.getAttribute('data-zan-key') || el.getAttribute('data-key') || '');
-      if (key === PAGE_KEY) {
-        pageEls.push(el);
-      } else {
-        if (!otherEls[key]) otherEls[key] = [];
-        otherEls[key].push(el);
-      }
-    }
-  }
-
-  /* 每次打开（含 SPA 路由切换）只报一次当前页；统计不依赖容器 */
-  function sendPageview() {
-    if (!STATS_ON) return;
-    var url = location.pathname + location.search;
-    if (url === lastSent) return;
-    lastSent = url;
-
-    var key = currentKey();
-    var wantSite = siteEls.length ? '1' : '';
-    var body = 'action=pageview&site=' + encodeURIComponent(SITE)
-      + '&url=' + encodeURIComponent(url)
-      + '&title=' + encodeURIComponent(document.title || '')
-      + '&referrer=' + encodeURIComponent(document.referrer || '')
-      + '&screen=' + encodeURIComponent((window.screen ? screen.width + 'x' + screen.height : ''))
-      + '&language=' + encodeURIComponent(navigator.language || '')
-      + '&hostname=' + encodeURIComponent(location.hostname || '')
-      + (wantSite ? '&want_site=1' : '');
-
-    fetch(SERVER + '/api/zan.php', {
-      method: 'POST',
-      credentials: 'omit',
-      keepalive: true,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: body
-    }).then(function (r) {
-      return r.json();
-    }).then(function (d) {
-      if (!d || d.code !== 0 || !d.data) return;
-      if (typeof d.data.views === 'number') {
-        paintViews(pageEls, d.data.views);
-      }
-      if (d.data.site && typeof d.data.site.views === 'number') {
-        paintViews(siteEls, d.data.site.views);
-      }
-      /* 主题/插件自带的阅读数跑在本脚本之前（本脚本 defer），
-         它读到的是「写入之前」的旧值。这里把写入之后的准数广播出去，
-         让它覆盖，省得用户刷新一次才看到 +1。 */
-      try {
-        window.dispatchEvent(new CustomEvent('zan:pageview', {
-          detail: {
-            path: url.split('?')[0],
-            views: d.data.views,
-            pageviews: d.data.pageviews,
-            visitors: d.data.visitors
-          }
-        }));
-      } catch (e) {}
-    }).catch(function () {});
-  }
-
-  function bootStats() {
-    collectViews();
-    if (!STATS_ON) return;
-
-    /* 指向别页的容器：只读数字，不发写请求 */
-    var keys = [];
-    for (var k in otherEls) {
-      if (Object.prototype.hasOwnProperty.call(otherEls, k)) keys.push(k);
-    }
-    if (keys.length) {
-      apiQuery(keys, function (data) {
-        for (var i = 0; i < keys.length; i++) {
-          var d = data[keys[i]];
-          paintViews(otherEls[keys[i]], d && typeof d.views === 'number' ? d.views : 0);
-        }
-      });
-    }
-
-    function run() {
-      sendPageview();
-    }
-
-    /* 后台标签页和预渲染先不报，等真正被看到 */
-    if (document.visibilityState === 'hidden') {
-      var once = function () {
-        if (document.visibilityState !== 'hidden') {
-          document.removeEventListener('visibilitychange', once);
-          run();
-        }
-      };
-      document.addEventListener('visibilitychange', once);
-    } else {
-      run();
-    }
-
-    /* SPA：pushState / replaceState / 后退都补一条浏览 */
-    function hookHistory(name) {
-      var orig = history[name];
-      if (typeof orig !== 'function') return;
-      history[name] = function () {
-        var r = orig.apply(this, arguments);
-        setTimeout(run, 0);
-        return r;
-      };
-    }
-    hookHistory('pushState');
-    hookHistory('replaceState');
-    window.addEventListener('popstate', function () { setTimeout(run, 0); });
-  }
-
-  /* ---------------------------------------------------------------- 点赞 */
-
   function bootLikes() {
     var list = document.querySelectorAll('[data-zan]');
     if (!list.length) return;
@@ -575,12 +409,9 @@
     server: SERVER,
     vid: vid,
     key: normKey,
-    pageview: sendPageview
+    refresh: bootLikes
   };
   window.SugarBox = window.Zan;
 
-  ready(function () {
-    bootStats();
-    bootLikes();
-  });
+  ready(bootLikes);
 })();

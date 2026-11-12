@@ -1,0 +1,76 @@
+# Sugar-Box 3.0 · 点赞服务
+#
+#   cp .env.example .env && vi .env      # 填一个数据库密码
+#   docker compose up -d
+#
+# 打开 http://服务器IP:8080/ 看到「运行正常」即可用。
+
+services:
+  zan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sugar-box:3.0.0
+    container_name: zan
+    restart: unless-stopped
+    ports:
+      - "${ZAN_PORT:-8080}:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-zan}
+      DB_USER: ${DB_USER:-zan}
+      DB_PASS: ${DB_PASS:?请先在 .env 里设置 DB_PASS（数据库密码）}
+      DB_PREFIX: ${DB_PREFIX:-zan_}
+      SITE_NAME: ${SITE_NAME:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      # config.php 与运行期文件都在这里，容器重建 / 升级镜像都不丢
+      - zan_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/index.php')===false?1:0);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  db:
+    image: mysql:5.7
+    container_name: zan-db
+    restart: unless-stopped
+    # 只在内网暴露，宿主机不映射 3306，避免数据库直接面对公网
+    expose:
+      - "3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-${DB_PASS}}
+      MYSQL_DATABASE: ${DB_NAME:-zan}
+      MYSQL_USER: ${DB_USER:-zan}
+      MYSQL_PASSWORD: ${DB_PASS}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --max-connections=60
+      - --skip-name-resolve
+    volumes:
+      - zan_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 512m
+
+volumes:
+  zan_data:
+  zan_db:

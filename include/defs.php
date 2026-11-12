@@ -9,13 +9,13 @@ if (!defined('ZAN_APP')) {
 }
 
 if (!defined('ZAN_VERSION')) {
-    define('ZAN_VERSION', '2.0.7');
+    define('ZAN_VERSION', '3.0.0');
 }
 if (!defined('ZAN_BRAND')) {
     define('ZAN_BRAND', 'Sugar-Box');
 }
 if (!defined('ZAN_TAGLINE')) {
-    define('ZAN_TAGLINE', '点赞 + 网站统计');
+    define('ZAN_TAGLINE', 'Hexo 文章点赞服务');
 }
 /* 程序根目录，带结尾斜杠 */
 if (!defined('ZAN_ROOT')) {

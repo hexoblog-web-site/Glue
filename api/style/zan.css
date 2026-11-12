@@ -123,21 +123,6 @@
   opacity: .85;
 }
 
-/* 阅读数：容器内由脚本填两个 span，站长不用管 */
-[data-zan-view] {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-[data-zan-view] .zan-view-count {
-  letter-spacing: .01em;
-}
-
-[data-zan-view] .zan-view-label {
-  margin-left: .32em;
-  opacity: .72;
-}
-
 @keyframes zan-pop {
   0% { transform: scale(1); }
   45% { transform: scale(1.28); }

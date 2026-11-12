@@ -28,7 +28,6 @@ $server = zan_abs_url('');
 
 if (isset($_GET['format']) && $_GET['format'] === 'html') {
     $snippet = '<div data-zan data-zan-scope="content"></div>' . "\n"
-        . '<span data-zan-view></span>' . "\n"
         . '<script src="' . $server . '/api/js/zan.js" data-server="' . $server . '" defer></script>';
     ?><!DOCTYPE html>
 <html lang="zh-CN">
@@ -67,7 +66,7 @@ if (isset($_GET['format']) && $_GET['format'] === 'html') {
         <table>
             <tr><th>服务地址</th><td><code><?php echo zan_h($server); ?></code></td></tr>
             <tr><th>版本</th><td><?php echo zan_h(ZAN_VERSION); ?></td></tr>
-            <tr><th>接入代码</th><td><textarea rows="3" readonly onclick="this.select()"><?php echo zan_h($snippet); ?></textarea></td></tr>
+            <tr><th>接入代码</th><td><textarea rows="2" readonly onclick="this.select()"><?php echo zan_h($snippet); ?></textarea></td></tr>
         </table>
         <a class="btn" href="<?php echo zan_h(zan_url('admin/login.php')); ?>">进入后台</a>
     </div>
@@ -84,6 +83,6 @@ if (!headers_sent()) {
 }
 echo json_encode(array(
     'code'    => $ok ? 0 : 500,
-    'message' => $ok ? 'Sugar-Box 运行正常：点赞只在内容页生效，统计覆盖全站' : ('Sugar-Box 无法正常工作：' . $detail),
+    'message' => $ok ? 'Sugar-Box 运行正常：只提供点赞，不采集任何浏览数据' : ('Sugar-Box 无法正常工作：' . $detail),
     'version' => ZAN_VERSION,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

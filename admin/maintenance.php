@@ -8,8 +8,6 @@ require_once dirname(__DIR__) . '/include/schema.php';
 require dirname(__DIR__) . '/include/backup-lib.php';
 zan_require_admin();
 $pdo = zan_db_or_die();
-zan_stats_bootstrap($pdo);
-$statsReady = zan_stats_ready();
 
 $notice = '';
 
@@ -17,7 +15,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     $action = zan_post_str('action');
 
     /* 所有动作（包括「下载备份」）都先验 CSRF：
-       下载会把全部访客记录打到浏览器，不能靠一个跨站表单就能触发。 */
+       下载会把全部点赞记录打到浏览器，不能靠一个跨站表单就能触发。 */
     if (!zan_csrf_ok(zan_post_str('nonce'))) {
         $notice = array('页面已过期，请刷新后重试。', 'error');
     } elseif ($action === 'backup') {
@@ -32,17 +30,6 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
             exit;
         } catch (PDOException $e) {
             $notice = array('建表失败：' . zan_h($e->getMessage()), 'error');
-        }
-    } elseif ($action === 'migrate') {
-        /* 旧阅读表 → event / session，幂等，重复点不会翻倍 */
-        try {
-            zan_create_tables($pdo, (string) zan_cfg('table_prefix', 'zan_'));
-            $n = zan_stats_migrate_legacy($pdo);
-            zan_config_save(array('stats_migrated' => '1'));
-            header('Location: ' . zan_url('admin/maintenance.php?done=migrate&n=' . (int) $n));
-            exit;
-        } catch (PDOException $e) {
-            $notice = array('迁移失败：' . zan_h($e->getMessage()), 'error');
         }
     } elseif ($action === 'restore') {
         $mode    = isset($_POST['mode']) ? (string) $_POST['mode'] : 'merge';
@@ -71,10 +58,6 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         } else {
             $pdo->beginTransaction();
             $pdo->exec('DELETE FROM ' . zan_table('log'));
-            if ($statsReady) {
-                $pdo->exec('DELETE FROM ' . zan_table('event'));
-                $pdo->exec('DELETE FROM ' . zan_table('session'));
-            }
             if ($scope === 'all') {
                 $pdo->exec('DELETE FROM ' . zan_table('page'));
             }
@@ -90,19 +73,14 @@ if (isset($_GET['done'])) {
         $notice = array('数据已导入。', 'ok');
     } elseif ($_GET['done'] === 'repair') {
         $notice = array('表结构已补齐（已存在的表没有改动）。', 'ok');
-    } elseif ($_GET['done'] === 'migrate') {
-        $notice = array('旧阅读记录已导入：现在共 ' . (int) (isset($_GET['n']) ? $_GET['n'] : 0) . ' 条浏览事件。', 'ok');
     } elseif ($_GET['done'] === 'wipe') {
         $scope  = isset($_GET['scope']) ? $_GET['scope'] : 'log';
-        $notice = array($scope === 'all' ? '点赞、浏览记录和页面列表都已清空。' : '点赞和浏览记录已清空，页面列表保留。', 'ok');
+        $notice = array($scope === 'all' ? '点赞记录和页面列表都已清空。' : '点赞记录已清空，页面列表保留。', 'ok');
     }
 }
 
-$total   = (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('log'))->fetchColumn();
-$pages   = (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('page'))->fetchColumn();
-$events  = $statsReady ? (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('event'))->fetchColumn() : 0;
-$session = $statsReady ? (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('session'))->fetchColumn() : 0;
-$legacy  = zan_has_view_table($pdo) ? (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('view'))->fetchColumn() : 0;
+$total = (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('log'))->fetchColumn();
+$pages = (int) $pdo->query('SELECT COUNT(*) FROM ' . zan_table('page'))->fetchColumn();
 
 /* 上传上限：取 upload_max_filesize 与 post_max_size 的较小值 */
 function zan_ini_bytes($v)
@@ -134,37 +112,13 @@ if ($notice) {
 ?>
 <div class="za-cards">
     <div class="za-card za-stat"><span>点赞记录</span><strong><?php echo $total; ?></strong></div>
-    <div class="za-card za-stat"><span>浏览事件</span><strong><?php echo $events; ?></strong></div>
-    <div class="za-card za-stat"><span>访客会话</span><strong><?php echo $session; ?></strong></div>
     <div class="za-card za-stat"><span>页面</span><strong><?php echo $pages; ?></strong></div>
     <div class="za-card za-stat"><span>上传上限</span><strong class="sm"><?php echo zan_h($limitH); ?></strong></div>
 </div>
 
-<?php if (!$statsReady) : ?>
-<div class="za-card is-danger">
-    <div class="za-card-head"><h2>统计表还没建好</h2></div>
-    <p class="za-desc">数据库里缺少 <code>session</code> / <code>event</code> 表，接口会跳过统计。点下面的按钮补建，已有数据不会受影响。</p>
-    <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
-        <?php echo zan_csrf_field(); ?>
-        <input type="hidden" name="action" value="repair" />
-        <button type="submit" class="za-btn is-primary">补建表结构</button>
-    </form>
-</div>
-<?php elseif ($legacy > 0 && $events === 0) : ?>
-<div class="za-card">
-    <div class="za-card-head"><h2>从旧阅读表导入</h2></div>
-    <p class="za-desc">检测到 1.4 及更早版本留下的 <?php echo $legacy; ?> 条阅读记录。点一下搬到新的浏览事件表，重复点不会重复计数。</p>
-    <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
-        <?php echo zan_csrf_field(); ?>
-        <input type="hidden" name="action" value="migrate" />
-        <button type="submit" class="za-btn is-primary">导入旧记录</button>
-    </form>
-</div>
-<?php endif; ?>
-
 <div class="za-card">
     <div class="za-card-head"><h2>备份</h2></div>
-    <p class="za-desc">导出成 JSON 下载到本地。备份包含页面标题、点赞记录、浏览事件与访客会话，不含管理员密码。</p>
+    <p class="za-desc">导出成 JSON 下载到本地。备份包含页面标题与点赞记录，不含管理员密码。</p>
     <form method="post" action="<?php echo zan_h(zan_url('admin/maintenance.php')); ?>">
         <?php echo zan_csrf_field(); ?>
         <input type="hidden" name="action" value="backup" />
@@ -198,7 +152,7 @@ if ($notice) {
         <?php echo zan_csrf_field(); ?>
         <input type="hidden" name="action" value="wipe" />
 
-        <label class="za-radio"><input type="radio" name="scope" value="log" checked /> 只清空点赞和浏览记录（页面列表保留）</label>
+        <label class="za-radio"><input type="radio" name="scope" value="log" checked /> 只清空点赞记录（页面列表保留）</label>
         <label class="za-radio"><input type="radio" name="scope" value="all" /> 连页面列表一起清空（回到刚装好的状态）</label>
 
         <label for="del">输入 <code>DELETE</code> 确认</label>

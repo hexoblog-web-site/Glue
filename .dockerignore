@@ -1,0 +1,15 @@
+.git
+.github
+.gitignore
+.gitattributes
+.env
+.env.*
+!.env.example
+docker-compose.yml
+*.md
+!README.md
+data/
+config.php
+*.log
+shots/
+node_modules/

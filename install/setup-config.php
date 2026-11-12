@@ -120,16 +120,10 @@ switch ($step) {
             'db_pass'         => $pwd,
             'table_prefix'    => $prefix,
             'site_secret'     => bin2hex(random_bytes(32)),
-            'site_id'         => bin2hex(random_bytes(8)),
             'site_name'       => '',
-            'view_on'         => true,
-            'view_mode'       => 'pv',
-            'salt_rotation'   => 'month',
-            /* 新装没有旧阅读表，不需要迁移 */
-            'stats_migrated'  => '1',
             /* 留空 = 允许任意来源调用接口（本地调试方便）。上线后可填 ['https://www.example.com'] */
             'allowed_origins' => array(),
-            /* 套了 Cloudflare / 面板反代时把回源 IP 填进来，否则所有人算同一个访客 */
+            /* 套了 Cloudflare / 面板反代时把回源 IP 填进来，否则没有本地标识的访客会算成同一个人 */
             'trusted_proxies' => array(),
         );
         $content = "<?php\n/**\n * Sugar-Box 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($config, true) . ";\n";
