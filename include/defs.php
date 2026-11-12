@@ -21,6 +21,13 @@ if (!defined('ZAN_TAGLINE')) {
 if (!defined('ZAN_ROOT')) {
     define('ZAN_ROOT', dirname(__DIR__) . DIRECTORY_SEPARATOR);
 }
+/* 运行期数据目录（登录节流、更新状态）：容器里指到数据卷，普通部署就是 ./data */
+if (!defined('ZAN_DATA_DIR')) {
+    $zan_data = getenv('ZAN_DATA_DIR');
+    define('ZAN_DATA_DIR', ($zan_data !== false && $zan_data !== '')
+        ? rtrim($zan_data, '/\\')
+        : ZAN_ROOT . 'data');
+}
 /* 最低 PHP 版本 */
 if (!defined('ZAN_REQ_PHP')) {
     define('ZAN_REQ_PHP', '7.4');

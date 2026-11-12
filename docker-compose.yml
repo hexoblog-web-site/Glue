@@ -26,6 +26,8 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ZAN_CONFIG_FILE: /data/config.php
+      ZAN_DATA_DIR: /data/app-data
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       # config.php 与运行期文件都在这里，容器重建 / 升级镜像都不丢

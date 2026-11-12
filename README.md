@@ -218,7 +218,7 @@ api/style/zan.css    样式
 admin/               后台（仪表盘 / 排行 / 备份 / 设置）
 include/             common（配置、数据库、鉴权）、schema（建表）、backup-lib
 install/             浏览器安装向导（不用 Docker 时走这条）
-docker/              entrypoint、启动自检、php.ini、apache 配置
+docker/              entrypoint、启动自检、php.ini、nginx 站点配置
 Dockerfile
 docker-compose.yml
 ```

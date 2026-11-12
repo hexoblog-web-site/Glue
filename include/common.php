@@ -15,6 +15,11 @@ require_once __DIR__ . '/defs.php';
 
 function zan_config_file()
 {
+    /* 容器里配置放在数据卷上，用环境变量指过去；普通部署还是程序根目录 */
+    $env = getenv('ZAN_CONFIG_FILE');
+    if ($env !== false && $env !== '') {
+        return $env;
+    }
     return ZAN_ROOT . 'config.php';
 }
 
@@ -498,7 +503,7 @@ function zan_csrf_rotate()
 
 function zan_login_throttle_file()
 {
-    return rtrim(ZAN_ROOT, '/\\') . '/data/login-throttle.json';
+    return rtrim(ZAN_DATA_DIR, '/\\') . '/login-throttle.json';
 }
 
 function zan_login_throttle_read()
@@ -589,7 +594,7 @@ function zan_login_throttle_clear()
  */
 function zan_update_hint()
 {
-    $f = ZAN_ROOT . 'data' . DIRECTORY_SEPARATOR . 'update.json';
+    $f = rtrim(ZAN_DATA_DIR, '/\\') . DIRECTORY_SEPARATOR . 'update.json';
     if (!is_file($f)) {
         return '';
     }
@@ -624,7 +629,7 @@ function zan_update_auto_due()
     if (trim((string) zan_cfg('update_repo', '')) === '') {
         return false;
     }
-    $f    = ZAN_ROOT . 'data' . DIRECTORY_SEPARATOR . 'update.json';
+    $f    = rtrim(ZAN_DATA_DIR, '/\\') . DIRECTORY_SEPARATOR . 'update.json';
     $last = 0;
     if (is_file($f)) {
         $s = json_decode((string) @file_get_contents($f), true);

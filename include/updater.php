@@ -35,7 +35,7 @@ require_once __DIR__ . '/zipreader.php';
 /** data/ 下的路径（PHP 在 Windows 上也认 /，统一用斜杠，省得界面上出现混合分隔符） */
 function zan_upd_data($sub = '')
 {
-    return rtrim(ZAN_ROOT, '/\\') . '/data/' . $sub;
+    return rtrim(ZAN_DATA_DIR, '/\\') . '/' . $sub;
 }
 
 function zan_upd_state_file()
@@ -60,7 +60,7 @@ function zan_upd_mkdir($dir)
  */
 function zan_upd_guard_data()
 {
-    $root = rtrim(ZAN_ROOT, '/\\') . '/data';
+    $root = rtrim(ZAN_DATA_DIR, '/\\');
     if (!is_dir($root)) {
         return;
     }
