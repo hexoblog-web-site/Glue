@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sugar-Box 一键安装
+# Glue 一键安装
 #
 #   sh -c "$(curl -fsSL https://raw.githubusercontent.com/hexoblog-web-site/Glue/main/install.sh)"
 #
@@ -124,7 +124,7 @@ if [ -z "$PASS" ]; then
 fi
 
 {
-    echo "Sugar-Box 部署信息"
+    echo "Glue 部署信息"
     echo "目录: $DIR"
     echo "站点: http://127.0.0.1:${PORT_NOW}/"
     echo "后台: http://127.0.0.1:${PORT_NOW}/admin/login.php"

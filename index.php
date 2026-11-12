@@ -83,6 +83,6 @@ if (!headers_sent()) {
 }
 echo json_encode(array(
     'code'    => $ok ? 0 : 500,
-    'message' => $ok ? 'Sugar-Box 运行正常：只提供点赞，不采集任何浏览数据' : ('Sugar-Box 无法正常工作：' . $detail),
+    'message' => $ok ? 'Glue 运行正常：只提供点赞，不采集任何浏览数据' : ('Glue 无法正常工作：' . $detail),
     'version' => ZAN_VERSION,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

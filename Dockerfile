@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1
 
 ###############################################################################
-# Sugar-Box 3.0 · 纯点赞服务（Nginx + PHP-FPM，不用 Apache）
+# Glue 3.0 · 纯点赞服务（Nginx + PHP-FPM，不用 Apache）
 #
-#   docker build -t sugar-box:3.0.0 .
+#   docker build -t glue:3.0.0 .
 #   docker run -d --name zan -p 8080:80 \
 #     -e DB_HOST=... -e DB_NAME=zan -e DB_USER=zan -e DB_PASS=... \
 #     -e ADMIN_EMAIL=me@example.com -e ADMIN_PASSWORD=... \
-#     -v zan_data:/data sugar-box:3.0.0
+#     -v zan_data:/data glue:3.0.0
 #
 # 容器内只有一个 Nginx 进程 + 一组 PHP-FPM worker，没有 Apache、没有 Node。
 ###############################################################################
 
 FROM php:8.3-fpm
 
-LABEL org.opencontainers.image.title="Sugar-Box" \
+LABEL org.opencontainers.image.title="Glue" \
       org.opencontainers.image.description="Hexo 文章点赞服务（Nginx + PHP-FPM + MySQL），只做点赞，不采集访客数据" \
       org.opencontainers.image.version="3.0.0" \
       org.opencontainers.image.licenses="MIT"

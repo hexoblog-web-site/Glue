@@ -1,6 +1,6 @@
 #!/bin/sh
 ###############################################################################
-# Sugar-Box 容器入口（Nginx + PHP-FPM）
+# Glue 容器入口（Nginx + PHP-FPM）
 #
 #   1. 把可变文件统一收到 /data（容器重建不丢数据）
 #   2. 等数据库就绪、按环境变量生成 config.php、建表、建管理员
@@ -48,6 +48,12 @@ chown -R www-data:www-data /data
 # nginx 临时目录（apt 装的包通常会建好，这里兜个底）
 mkdir -p /var/lib/nginx/body /var/lib/nginx/fastcgi /var/lib/nginx/proxy /var/lib/nginx/scgi /var/lib/nginx/uwsgi /var/log/nginx
 chown -R www-data:www-data /var/lib/nginx /var/log/nginx 2>/dev/null || true
+
+# 传了自定义命令就照办，方便 `docker run 镜像 php -v` / `nginx -t` 这类调试；
+# 不传参数（compose 的默认情况）才进下面的双进程模式。
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
 
 ###############################################################################
 # 双进程模型

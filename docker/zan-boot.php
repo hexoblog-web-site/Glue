@@ -82,7 +82,7 @@ function boot_write_config()
             : boot_lines(boot_env('TRUSTED_PROXIES', '')),
     );
 
-    $body = "<?php\n/**\n * Sugar-Box 配置（容器首次启动生成，后台设置页会更新）\n */\n"
+    $body = "<?php\n/**\n * Glue 配置（容器首次启动生成，后台设置页会更新）\n */\n"
         . 'return ' . var_export($cfg, true) . ";\n";
 
     $tmp = BOOT_CONFIG . '.tmp';

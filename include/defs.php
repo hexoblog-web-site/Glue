@@ -12,7 +12,7 @@ if (!defined('ZAN_VERSION')) {
     define('ZAN_VERSION', '3.0.0');
 }
 if (!defined('ZAN_BRAND')) {
-    define('ZAN_BRAND', 'Sugar-Box');
+    define('ZAN_BRAND', 'Glue');
 }
 if (!defined('ZAN_TAGLINE')) {
     define('ZAN_TAGLINE', 'Hexo 文章点赞服务');

@@ -126,7 +126,7 @@ switch ($step) {
             /* 套了 Cloudflare / 面板反代时把回源 IP 填进来，否则没有本地标识的访客会算成同一个人 */
             'trusted_proxies' => array(),
         );
-        $content = "<?php\n/**\n * Sugar-Box 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($config, true) . ";\n";
+        $content = "<?php\n/**\n * Glue 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($config, true) . ";\n";
         $file    = ZAN_ROOT . 'config.php';
 
         if (@file_put_contents($file, $content, LOCK_EX) !== false) {

@@ -1,5 +1,5 @@
 /*!
- * zan.js 3.0.0 - Sugar-Box：纯点赞版（内置样式）
+ * zan.js 3.0.0 - Glue：纯点赞版（内置样式）
  * 接入：<script src="https://你的域名/api/js/zan.js" data-server="https://你的域名" defer></script>
  * 点赞：<div data-zan data-zan-scope="content"></div>（内容页专用；列表页请勿加 scope）
  * 只读：<div data-zan></div>（不带 scope 的容器只显示数字，点不动）
@@ -286,7 +286,7 @@
         done(d.data && typeof d.data.likes === 'number' ? d.data.likes : prev);
       } else if (d && d.code === 403) {
         g.likes = prev;
-        try { console.warn('[Sugar-Box] ' + (d.message || '只能在内容页点赞')); } catch (e) {}
+        try { console.warn('[Glue] ' + (d.message || '只能在内容页点赞')); } catch (e) {}
       } else {
         g.likes = prev;
         throw new Error('failed');
@@ -399,7 +399,7 @@
     });
 
     try {
-      if (window.__ZAN_DEBUG__) console.log('[Sugar-Box] ' + VERSION + ' keys=' + order.length);
+      if (window.__ZAN_DEBUG__) console.log('[Glue] ' + VERSION + ' keys=' + order.length);
     } catch (e) {}
   }
 
@@ -411,7 +411,7 @@
     key: normKey,
     refresh: bootLikes
   };
-  window.SugarBox = window.Zan;
+  window.Glue = window.Zan;
 
   ready(bootLikes);
 })();

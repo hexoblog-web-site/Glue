@@ -62,7 +62,7 @@ function zan_config_save(array $changes)
     foreach ($changes as $k => $v) {
         $cfg[$k] = $v;
     }
-    $body = "<?php\n/**\n * Sugar-Box 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($cfg, true) . ";\n";
+    $body = "<?php\n/**\n * Glue 配置（安装向导生成，后台设置页会更新）\n */\nreturn " . var_export($cfg, true) . ";\n";
 
     /* 先写临时文件再 rename：这个文件一坏，整站 500。
        直接覆盖写的时候哪怕断电一次，config.php 就只剩半截 PHP。 */

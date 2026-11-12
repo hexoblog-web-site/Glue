@@ -38,7 +38,7 @@ function zan_bk_json(PDO $pdo)
 
 function zan_bk_filename()
 {
-    return 'sugar-box-backup-' . date('Ymd-His') . '.json';
+    return 'glue-backup-' . date('Ymd-His') . '.json';
 }
 
 /** 直接推给浏览器下载，不落盘 */
