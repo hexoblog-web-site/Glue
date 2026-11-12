@@ -35,12 +35,18 @@ function zan_install_session()
     }
     @ini_set('session.use_strict_mode', '1');
     $dir = rtrim(str_replace('\\', '/', dirname((string) (isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '/'))), '/');
+    /* 与 common.php 的 zan_is_https() 同逻辑：反代后端也要认出 https，否则 Cookie 丢 Secure */
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    if (!$https && !empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        $proto = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_PROTO']);
+        $https = (strtolower(trim($proto[0])) === 'https');
+    }
     session_set_cookie_params(array(
         'lifetime' => 0,
         'path'     => ($dir === '' ? '/' : $dir . '/'),
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'secure'   => $https,
     ));
     session_name('zansid');
     session_start();

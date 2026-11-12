@@ -160,11 +160,31 @@ function zan_url($path = '')
     return zan_base_path() . '/' . ltrim($path, '/');
 }
 
+/**
+ * 当前请求是不是 HTTPS。
+ *
+ * 容器部署时 TLS 在宿主机 Nginx 上终结，容器里看到的永远是 http，
+ * 所以必须同时认 X-Forwarded-Proto，否则 Cookie 不会带 Secure、生成的接入地址会是 http://。
+ */
+function zan_is_https()
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        /* 多级代理时形如 "https, http"，只认第一段 */
+        $parts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_PROTO']);
+        if (strtolower(trim($parts[0])) === 'https') {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** 站点根地址（含协议与主机），用于生成接入代码 */
 function zan_abs_url($path = '')
 {
-    $https  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    $https  = zan_is_https();
     $host   = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
     return ($https ? 'https://' : 'http://') . $host . zan_url($path);
 }
@@ -437,7 +457,7 @@ function zan_session_start()
         'path'     => ($path === '' ? '/' : $path . '/'),
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'secure'   => zan_is_https(),
     ));
     session_name('zansid');
     session_start();
