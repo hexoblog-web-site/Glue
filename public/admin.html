@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>管理后台 · 服务状态</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='19' font-size='19'%3E%F0%9F%97%BC%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/assets/app.css" />
+  <link rel="stylesheet" href="/assets/admin.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <!-- 登录 -->
+  <div class="login-wrap" id="loginView" hidden>
+    <form class="login-card" id="loginForm">
+      <div class="login-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><path d="M12 15v2" />
+        </svg>
+      </div>
+      <h1>管理后台</h1>
+      <p>输入管理密码以继续</p>
+      <input type="password" id="password" placeholder="管理密码" autocomplete="current-password" required />
+      <button class="btn btn-primary" type="submit" id="loginBtn">登录</button>
+      <span class="login-error" id="loginError"></span>
+      <a class="login-back" href="/">← 返回状态页</a>
+    </form>
+  </div>
+
+  <!-- 后台 -->
+  <div class="page admin-page" id="adminView" hidden>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v2M4.9 4.9l1.4 1.4M19.1 4.9l-1.4 1.4" />
+            <path d="M9.5 8h5l1.2 10.2a2 2 0 0 1-2 2.2H10.3a2 2 0 0 1-2-2.2L9.5 8Z" />
+            <path d="M9.8 12.5h4.4M10 16h4" />
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>监控管理</strong>
+          <small>Beacon Monitor</small>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <button class="version-pill" id="versionBtn" type="button" title="检查是否有新版本">
+          <span class="version-dot" aria-hidden="true"></span>
+          <span id="versionText">v—</span>
+        </button>
+        <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">查看状态页</a>
+        <button class="btn btn-ghost" id="logoutBtn" type="button">退出</button>
+      </div>
+    </header>
+
+    <section class="update-banner" id="updateBanner" hidden>
+      <div class="update-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5" /><path d="M5 21h14" /></svg>
+      </div>
+      <div class="update-body">
+        <h3>
+          发现新版本 <code id="updateLatest">—</code>
+          <span class="update-current">当前 v<span id="updateCurrent">—</span></span>
+        </h3>
+        <p id="updateHint">更新后无需重新安装，数据与设置都会保留。</p>
+        <div class="update-cmd">
+          <code id="updateCmd">bash update.sh</code>
+          <button class="btn btn-sm" type="button" data-copy="updateCmd">复制</button>
+        </div>
+      </div>
+      <div class="update-actions">
+        <a class="btn btn-sm btn-primary" id="updateLink" target="_blank" rel="noopener" hidden>查看更新内容</a>
+        <button class="btn btn-sm" id="updateRecheck" type="button">重新检查</button>
+      </div>
+    </section>
+
+    <div class="admin-toolbar">
+      <div>
+        <h1>监控项</h1>
+        <p id="monitorSummary">加载中…</p>
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn" id="scanBtn" type="button" title="扫描服务器上已经在运行的服务">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <span>扫描本机服务</span>
+        </button>
+        <button class="btn btn-primary" id="addBtn" type="button">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          <span>新增监控</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>名称 / 地址</th>
+              <th>分组</th>
+              <th>间隔</th>
+              <th>状态</th>
+              <th>延迟</th>
+              <th>24h 可用率</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="monitorRows">
+            <tr><td colspan="7" class="table-empty">加载中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <section class="settings-card engage-card">
+      <div class="settings-head">
+        <div>
+          <h2>互动统计 <span class="tag-ver">0.1.0</span></h2>
+          <p>只服务你自己的站点，数据全部留在本机；访客看到的只有数字</p>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-sm" id="statRefresh" type="button">刷新数据</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <span>今日浏览</span>
+          <strong id="statTodayPv">—</strong>
+        </div>
+        <div class="stat-cell">
+          <span>今日访客</span>
+          <strong id="statTodayUv">—</strong>
+        </div>
+        <div class="stat-cell">
+          <span>累计浏览</span>
+          <strong id="statTotalPv">—</strong>
+        </div>
+        <div class="stat-cell">
+          <span>累计访客</span>
+          <strong id="statTotalUv">—</strong>
+        </div>
+        <div class="stat-cell">
+          <span>累计点赞</span>
+          <strong id="statTotalLike">—</strong>
+        </div>
+      </div>
+
+      <div class="stat-trend">
+        <div class="stat-trend-head">
+          <span>最近 14 天浏览</span>
+          <span id="statTrendPeak" class="stat-trend-peak"></span>
+        </div>
+        <div class="stat-bars" id="statBars"></div>
+      </div>
+
+      <div class="stat-list-head">
+        <h3>文章明细</h3>
+        <div class="toolbar-actions">
+          <select id="statRange" class="stat-select">
+            <option value="7d">最近 7 天</option>
+            <option value="30d" selected>最近 30 天</option>
+            <option value="90d">最近 90 天</option>
+            <option value="all">全部</option>
+          </select>
+          <select id="statSort" class="stat-select">
+            <option value="pv" selected>按浏览</option>
+            <option value="uv">按访客</option>
+            <option value="like">按点赞</option>
+            <option value="useful">按有用</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="admin-table stat-table">
+          <thead>
+            <tr>
+              <th>文章</th>
+              <th class="num">浏览</th>
+              <th class="num">访客</th>
+              <th class="num">赞</th>
+              <th class="num">收藏</th>
+              <th class="num">有用率</th>
+            </tr>
+          </thead>
+          <tbody id="statRows">
+            <tr><td colspan="6" class="table-empty">还没有数据，接入脚本后自动开始统计</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="engage-snippets">
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>① 全站引入</b>
+              <span class="tag-rec">就这一行</span>
+            </div>
+            <p>放在所有页面底部。浏览上报、点赞按钮、朋友圈、友链申请全部由它按需接管，不用再引别的脚本</p>
+            <button class="btn btn-sm" type="button" data-copy="snipEngage">复制</button>
+          </header>
+          <pre><code id="snipEngage"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title"><b>② 文章页按钮</b></div>
+            <p>放在正文结束处；内部留空时会自动渲染图标和数字</p>
+            <button class="btn btn-sm" type="button" data-copy="snipEngageBtn">复制</button>
+          </header>
+          <pre><code id="snipEngageBtn"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title"><b>③ 列表页只读数字</b></div>
+            <p>首页、归档卡片里用，只显示数字，点了不发请求</p>
+            <button class="btn btn-sm" type="button" data-copy="snipEngageCount">复制</button>
+          </header>
+          <pre><code id="snipEngageCount"></code></pre>
+        </article>
+      </div>
+
+      <div class="engage-foot">
+        <p class="engage-tip">
+          访客指纹只保存加盐哈希，不记录 IP、UA 原文；识人优先用浏览器本地 id，换设备算新访客。
+        </p>
+        <button class="btn btn-sm btn-danger" id="statResetBtn" type="button">清空统计</button>
+      </div>
+    </section>
+
+    <section class="settings-card friends-card">
+      <div class="settings-head">
+        <div>
+          <h2>友链与友圈 <span class="tag-ver">1.1.0</span></h2>
+          <p>朋友提交申请 → 你审核 → 自动抓他们的 RSS，聚合成朋友圈</p>
+        </div>
+        <div class="toolbar-actions">
+          <a class="btn btn-sm" id="applyLink" href="/apply" target="_blank" rel="noopener">申请页</a>
+          <button class="btn btn-sm" id="friendFetchBtn" type="button">抓取全部</button>
+          <button class="btn btn-sm btn-primary" id="addFriendBtn" type="button">添加友链</button>
+        </div>
+      </div>
+
+      <div class="stat-grid friend-stats" id="friendStats"></div>
+
+      <div class="table-scroll">
+        <table class="admin-table friend-table">
+          <thead>
+            <tr>
+              <th>站点</th>
+              <th>状态</th>
+              <th>互链</th>
+              <th>RSS</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="friendRows">
+            <tr><td colspan="5" class="table-empty">加载中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stat-list-head">
+        <h3>友圈文章</h3>
+        <span class="friend-note" id="momentCount"></span>
+      </div>
+
+      <div class="table-scroll">
+        <table class="admin-table moment-table">
+          <thead>
+            <tr>
+              <th>标题</th>
+              <th>来源</th>
+              <th>时间</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="momentRows">
+            <tr><td colspan="4" class="table-empty">加载中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="engage-snippets">
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>朋友圈页面</b>
+              <span class="tag-rec">只放容器</span>
+            </div>
+            <p>放到 Hexo 的独立页面里。不要再引脚本，① 那一行会自动发现这个容器并渲染</p>
+            <button class="btn btn-sm" type="button" data-copy="snipMoments">复制</button>
+          </header>
+          <pre><code id="snipMoments"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>友链申请表单</b>
+              <span class="tag-rec">只放容器</span>
+            </div>
+            <p>放在友链页上，同样不用额外引脚本。换行里的属性可以调标题和说明</p>
+            <button class="btn btn-sm" type="button" data-copy="snipApply">复制</button>
+          </header>
+          <pre><code id="snipApply"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>友链页（替代 link.yml）</b>
+              <span class="tag-rec">只放容器</span>
+            </div>
+            <p>放在友链页，数据直接来自这里，加友链不用再改 yml、不用重新部署</p>
+            <button class="btn btn-sm" type="button" data-copy="snipFriendsWall">复制</button>
+          </header>
+          <pre><code id="snipFriendsWall"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>申请页直链</b>
+              <span class="tag-rec">零改动</span>
+            </div>
+            <p>不想改主题就用这个地址，自带表单和已收录站点墙</p>
+            <button class="btn btn-sm" type="button" data-copy="snipApplyPage">复制</button>
+          </header>
+          <pre><code id="snipApplyPage"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title"><b>友链数据接口</b></div>
+            <p>纯 JSON，给主题模板或自己写的组件用</p>
+            <button class="btn btn-sm" type="button" data-copy="snipFriends">复制</button>
+          </header>
+          <pre><code id="snipFriends"></code></pre>
+        </article>
+      </div>
+
+      <div class="engage-foot">
+        <p class="engage-tip">
+          没提供 RSS 的站点会标灰，不会反复重试；抓取失败会标红并写明原因，方便你去找对方。
+        </p>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-head">
+        <div>
+          <h2>站点设置</h2>
+          <p>这些信息会展示在公开状态页上</p>
+        </div>
+        <button class="btn btn-primary" id="saveSettingsBtn" type="button">保存设置</button>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>站点标题</span>
+          <input type="text" id="siteTitleInput" maxlength="60" placeholder="Manim Blog 服务状态" />
+        </label>
+        <label class="field">
+          <span>副标题</span>
+          <input type="text" id="siteDescInput" maxlength="80" placeholder="实时监控博客与各项服务的可用性" />
+        </label>
+        <label class="field field-full">
+          <span>页脚文字（可留空）</span>
+          <input type="text" id="footerInput" maxlength="200" placeholder="例如：本站服务由 MoeWah 提供运维支持" />
+        </label>
+        <label class="field field-full">
+          <span>站点网址（友链互链检测用）</span>
+          <input type="url" id="siteUrlInput" placeholder="https://www.manimblog.cn" />
+        </label>
+        <label class="field field-full">
+          <span>异常通知 Webhook（支持 Bark / 企业微信 / 飞书 / 钉钉 / 自定义）</span>
+          <input type="url" id="webhookInput" placeholder="https://api.day.app/你的key" />
+        </label>
+        <label class="field">
+          <span>数据保留天数</span>
+          <input type="number" id="retentionInput" min="7" max="3650" step="1" />
+        </label>
+        <label class="field field-inline">
+          <span>启用互动统计</span>
+          <input type="checkbox" id="statEnabledInput" checked />
+        </label>
+        <label class="field field-inline">
+          <span>公开显示浏览量</span>
+          <input type="checkbox" id="statShowPvInput" checked />
+        </label>
+        <label class="field field-inline">
+          <span>开放友链申请</span>
+          <input type="checkbox" id="friendApplyInput" checked />
+        </label>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-head">
+        <div>
+          <h2>博客接入</h2>
+          <p>三种方式，复制粘贴到博客即可，无需改后端</p>
+        </div>
+      </div>
+
+      <div class="snippets">
+        <article class="snippet">
+          <header>
+            <div class="snippet-title">
+              <b>① 一行 script</b>
+              <span class="tag-rec">推荐</span>
+            </div>
+            <p>自动在当前位置渲染「● 所有业务正常」，跟随博客文字颜色</p>
+            <button class="btn btn-sm" type="button" data-copy="snipDot">复制</button>
+          </header>
+          <pre><code id="snipDot"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title"><b>② 一张图片</b></div>
+            <p>完全不用 JS，Markdown 也能直接用；圆点按状态变色</p>
+            <button class="btn btn-sm" type="button" data-copy="snipImg">复制</button>
+          </header>
+          <pre><code id="snipImg"></code></pre>
+        </article>
+
+        <article class="snippet">
+          <header>
+            <div class="snippet-title"><b>③ 整块卡片嵌入</b></div>
+            <p>iframe 嵌入分组卡片与心跳条，适合独立状态页</p>
+            <button class="btn btn-sm" type="button" data-copy="snipIframe">复制</button>
+          </header>
+          <pre><code id="snipIframe"></code></pre>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p class="footer-note">检测由服务器直接发起 · 状态变更时才会推送通知</p>
+    </footer>
+  </div>
+
+  <!-- 监控编辑弹窗 -->
+  <div class="modal" id="editor" hidden>
+    <div class="modal-mask" data-close></div>
+    <form class="modal-panel editor-panel" id="editorForm">
+      <header class="modal-head">
+        <h2 id="editorTitle">新增监控</h2>
+        <button class="btn btn-ghost btn-icon" type="button" data-close aria-label="关闭">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <input type="hidden" id="editId" />
+        <div class="form-grid">
+          <label class="field">
+            <span>名称 *</span>
+            <input type="text" id="fName" maxlength="60" required placeholder="博客首页" />
+          </label>
+          <label class="field">
+            <span>分组</span>
+            <input type="text" id="fGroup" maxlength="40" placeholder="站点" list="groupList" />
+            <datalist id="groupList"></datalist>
+          </label>
+          <label class="field field-full">
+            <span>监控地址 *</span>
+            <input type="url" id="fUrl" required placeholder="https://www.manimblog.cn/" />
+          </label>
+          <label class="field">
+            <span>检测间隔（秒）</span>
+            <input type="number" id="fInterval" min="15" max="86400" step="5" />
+          </label>
+          <label class="field">
+            <span>超时（毫秒）</span>
+            <input type="number" id="fTimeout" min="1000" max="60000" step="500" />
+          </label>
+          <label class="field">
+            <span>预期状态码</span>
+            <input type="text" id="fStatus" placeholder="200-399" />
+          </label>
+          <label class="field">
+            <span>慢响应阈值（毫秒）</span>
+            <input type="number" id="fSlow" min="500" max="120000" step="100" />
+          </label>
+          <label class="field field-full">
+            <span>关键字校验（可选，页面需包含该文本）</span>
+            <input type="text" id="fKeyword" maxlength="200" placeholder="例如：Manim" />
+          </label>
+          <label class="field field-inline">
+            <span>启用监控</span>
+            <input type="checkbox" id="fActive" checked />
+          </label>
+          <label class="field">
+            <span>排序（小的在前）</span>
+            <input type="number" id="fSort" step="10" />
+          </label>
+        </div>
+        <div class="editor-actions">
+          <button class="btn" type="button" data-close>取消</button>
+          <button class="btn btn-primary" type="submit" id="editorSaveBtn">保存</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- 友链编辑弹窗 -->
+  <div class="modal" id="friendEditor" hidden>
+    <div class="modal-mask" data-fclose></div>
+    <form class="modal-panel" id="friendForm">
+      <header class="modal-head">
+        <h2 id="friendEditorTitle">添加友链</h2>
+        <button class="btn btn-ghost btn-icon" type="button" data-fclose aria-label="关闭">
+          <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <input type="hidden" id="friendId" />
+        <div class="form-grid">
+          <label class="field">
+            <span>站点名称 *</span>
+            <input type="text" id="friendName" maxlength="40" required placeholder="某某的博客" />
+          </label>
+          <label class="field">
+            <span>站点地址 *</span>
+            <input type="url" id="friendUrl" required placeholder="https://example.com" />
+          </label>
+          <label class="field field-full">
+            <span>一句话描述</span>
+            <input type="text" id="friendDesc" maxlength="120" placeholder="写代码的，也写诗" />
+          </label>
+          <label class="field">
+            <span>头像地址（留空用首字）</span>
+            <input type="text" id="friendAvatar" maxlength="300" placeholder="https://example.com/avatar.png" />
+          </label>
+          <label class="field">
+            <span>RSS 地址（留空自动发现）</span>
+            <input type="text" id="friendRss" maxlength="300" placeholder="自动尝试 /atom.xml 等" />
+          </label>
+        </div>
+        <div class="editor-actions">
+          <button class="btn" type="button" data-fclose>取消</button>
+          <button class="btn btn-primary" type="submit" id="friendSaveBtn">保存</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/assets/admin.js"></script>
+</body>
+</html>
