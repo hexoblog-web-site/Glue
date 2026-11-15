@@ -1,6 +1,6 @@
 * text=auto eol=lf
-*.sh text eol=lf
-Dockerfile text eol=lf
-*.png binary
-*.jpg binary
-*.webp binary
+*.php text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.json text eol=lf

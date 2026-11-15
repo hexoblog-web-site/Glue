@@ -1,86 +1,83 @@
+# Glue 3.0 · 点赞服务
+#
+#   最快：sh install.sh                       （自动生成密码、拉镜像、起容器）
+#
+#   手动：
+#   cp .env.example .env && vi .env           # 至少填一个 DB_PASS
+#   docker compose pull || docker compose build
+#   docker compose up -d
+#
+# 打开 http://服务器IP:8080/ 看到「运行正常」即可用。
+
 services:
-  beacon:
+  zan:
+    # 有官方镜像就直接拉；拉不到会自动回退成本地构建（见下方 build）
+    image: ghcr.io/hexoblog-web-site/glue:${ZAN_TAG:-latest}
     build:
       context: .
-      args:
-        # 国内服务器建议保留镜像源，海外服务器可改为 https://registry.npmjs.org
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-    # 有镜像就用镜像（可以被 watchtower 自动升级），没有也能本地 build
-    image: ${IMAGE:-ghcr.io/hexoblog-web-site/beacon-monitor:latest}
-    container_name: beacon-monitor
-    labels:
-      # 只让 watchtower 管这一个容器
-      com.centurylinklabs.watchtower.enable: "true"
+      dockerfile: Dockerfile
+    container_name: zan
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-8080}:8080"
+      - "${ZAN_PORT:-8080}:80"
     environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-zan}
+      DB_USER: ${DB_USER:-zan}
+      DB_PASS: ${DB_PASS:?请先在 .env 里设置 DB_PASS（数据库密码）}
+      DB_PREFIX: ${DB_PREFIX:-zan_}
+      SITE_NAME: ${SITE_NAME:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ZAN_CONFIG_FILE: /data/config.php
+      ZAN_DATA_DIR: /data/app-data
       TZ: ${TZ:-Asia/Shanghai}
-      PORT: "8080"
-      # ⚠️ 必改：管理后台登录密码（install.sh 会自动生成随机密码）
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-this-password}
-      SITE_TITLE: ${SITE_TITLE:-站点服务状态}
-      SITE_DESCRIPTION: ${SITE_DESCRIPTION:-实时监控站点与各项服务的可用性}
-      FOOTER_TEXT: ${FOOTER_TEXT:-}
-      WEBHOOK_URL: ${WEBHOOK_URL:-}
-      # 自动发现：1 开启（默认），0 关闭
-      AUTO_DISCOVER: ${AUTO_DISCOVER:-1}
-      # 自动更新：1 表示已启用 watchtower（后台会提示"会自动升级"），0 只能手动更新
-      AUTO_UPDATE: ${AUTO_UPDATE:-0}
-      # 版本检测用的仓库名，可换成自己的 fork
-      GITHUB_REPO: ${GITHUB_REPO:-hexoblog-web-site/beacon-monitor}
-      # 安装目录，仅用于在后台显示「cd 到这里执行 update.sh」
-      INSTALL_DIR: ${INSTALL_DIR:-/opt/beacon-monitor}
-      DISCOVER_INTERVAL_MIN: ${DISCOVER_INTERVAL_MIN:-10}
-      DISCOVER_GROUP: ${DISCOVER_GROUP:-自动发现}
-      # 通过容器里的 docker.sock 读取运行中的容器；如不挂载则只做端口探测
-      DOCKER_SOCK: /var/run/docker.sock
-      HOST_GATEWAY: host.docker.internal
-      # 仅在数据库为空时写入的初始监控项。示例为作者博客，请改成你自己的站点，
-      # 或整段删掉——自动发现会把本机已运行的服务补上。
-      SEED_MONITORS: >-
-        [
-          {"name":"博客首页","url":"https://www.manimblog.cn/","group_name":"站点","sort":10},
-          {"name":"文章订阅","url":"https://www.manimblog.cn/atom.xml","group_name":"站点","sort":20}
-        ]
     volumes:
-      - ./data:/data
-      # 只读挂载，仅用于列举容器（发现本机服务）。不需要自动发现可删掉这一行
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    extra_hosts:
-      # 让容器能用 host.docker.internal 访问宿主机上已安装的服务
-      - "host.docker.internal:host-gateway"
+      # config.php 与运行期文件都在这里，容器重建 / 升级镜像都不丢
+      - zan_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
     healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/index.php')===false?1:0);"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      start_period: 20s
 
-  # 自动更新：定期拉取新镜像并重启容器，数据卷不变
-  # 仅在 AUTO_UPDATE=1 时随 docker compose --profile auto-update 启动
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: beacon-watchtower
+  db:
+    image: mysql:5.7
+    container_name: zan-db
     restart: unless-stopped
-    profiles: ["auto-update"]
+    # 只在内网暴露，宿主机不映射 3306，避免数据库直接面对公网
+    expose:
+      - "3306"
     environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-${DB_PASS}}
+      MYSQL_DATABASE: ${DB_NAME:-zan}
+      MYSQL_USER: ${DB_USER:-zan}
+      MYSQL_PASSWORD: ${DB_PASS}
       TZ: ${TZ:-Asia/Shanghai}
-      # 只更新带 watchtower.enable=true 标签的容器
-      WATCHTOWER_LABEL_ENABLE: "true"
-      # 检查间隔（秒），默认 1 小时
-      WATCHTOWER_POLL_INTERVAL: ${UPDATE_INTERVAL:-3600}
-      # 更新后删除旧镜像，避免磁盘越占越多
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_ROLLING_RESTART: "true"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --max-connections=60
+      - --skip-name-resolve
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - zan_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 512m
+
+volumes:
+  zan_data:
+  zan_db:

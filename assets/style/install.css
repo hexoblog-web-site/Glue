@@ -1,0 +1,85 @@
+/* 安装向导：单卡片、无依赖 */
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body.ip {
+    margin: 0;
+    padding: 48px 20px 72px;
+    background: #f6f7f9;
+    color: #1d2327;
+    font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+.ip-logo { max-width: 620px; margin: 0 auto 14px; font-size: 13px; font-weight: 600; letter-spacing: .08em; color: #6b7280; text-transform: uppercase; }
+.ip-card {
+    max-width: 620px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #e3e6ea;
+    border-radius: 12px;
+    padding: 32px 34px 28px;
+}
+h1 { font-size: 22px; margin: 0 0 14px; }
+h2 { font-size: 16px; margin: 26px 0 10px; }
+p { margin: 10px 0; }
+ol, ul { margin: 10px 0 10px 22px; padding: 0; }
+li { margin: 4px 0; }
+code { font: 13px/1.6 ui-monospace, Consolas, monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 4px; }
+a { color: #3858e9; }
+.ip-table { width: 100%; border-collapse: collapse; margin: 18px 0 4px; }
+.ip-table th { text-align: left; width: 118px; font-weight: 500; font-size: 14px; vertical-align: top; padding: 10px 10px 10px 0; }
+.ip-table td { padding: 6px 0 10px; }
+.ip-table input[type=text], .ip-table input[type=email], .ip-table input[type=password] {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #d7dbe0;
+    border-radius: 8px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+}
+.ip-table input:focus { outline: 2px solid #3858e9; outline-offset: 1px; }
+.ip-desc { margin: 5px 0 0; font-size: 12.5px; color: #6b7280; }
+.ip-pwd { display: flex; gap: 8px; }
+.ip-pwd input { flex: 1; }
+.ip-btn {
+    display: inline-block;
+    padding: 9px 18px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #3858e9;
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+.ip-btn:hover { filter: brightness(1.08); text-decoration: none; }
+.ip-ghost { background: #fff; border-color: #d7dbe0; color: #1d2327; }
+.ip-step { margin: 24px 0 0; }
+.ip-error { padding: 10px 14px; border-radius: 8px; margin: 0 0 16px; font-size: 14px; background: #fff0f3; border: 1px solid #ffc9d6; color: #a61e4d; }
+.ip-success th { width: 80px; }
+.ip-code {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d7dbe0;
+    border-radius: 8px;
+    background: #fafbfc;
+    font: 12.5px/1.7 ui-monospace, Consolas, monospace;
+    resize: vertical;
+}
+.ip-note { margin-top: 22px; font-size: 13px; color: #6b7280; border-top: 1px solid #eef0f2; padding-top: 14px; }
+@media (prefers-color-scheme: dark) {
+    body.ip { background: #14161a; color: #e6e8eb; }
+    .ip-card { background: #1b1e24; border-color: #2a2f38; }
+    code { background: #262b33; }
+    a { color: #8aa4ff; }
+    .ip-table input[type=text], .ip-table input[type=email], .ip-table input[type=password], .ip-code {
+        background: #14161a; border-color: #2a2f38; color: #e6e8eb;
+    }
+    .ip-ghost { background: #232830; border-color: #2a2f38; color: #e6e8eb; }
+    .ip-note { border-color: #2a2f38; color: #9aa3af; }
+    .ip-error { background: #3a1b26; border-color: #6b2b3f; color: #ffc9d6; }
+}
+@media (max-width: 560px) {
+    .ip-card { padding: 22px 18px; }
+    .ip-table th { display: block; width: auto; padding-bottom: 2px; }
+    .ip-table td { display: block; padding-top: 0; }
+}
